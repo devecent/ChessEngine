@@ -15,6 +15,7 @@ struct Undo {
     int capturedSquare;
     int prevEnpassant;
     int prevCastle;
+    uint64_t zobrist;
 };
 
 //castling rights

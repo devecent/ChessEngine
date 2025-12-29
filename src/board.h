@@ -19,6 +19,7 @@ class Board {
     bool whiteToPlay;
     int squareIndex[64];
     std::vector<Undo> history;
+    uint64_t zobristKey;
 
     Board();
     

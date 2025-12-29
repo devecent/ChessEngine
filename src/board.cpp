@@ -33,9 +33,9 @@ Board::Board() {
         }
     }
     history.reserve(256);
-    //bitmask 1111
-    castlingRights = 15;
+    castlingRights = 0b1111;
     whiteToPlay = true;
+    zobristKey = 0x463b96181691fc9c;
 }
 
 inline bool isWhite(int piece) {
@@ -179,15 +179,18 @@ void Board::makeMove(const Move& move) {
         move.captured,
         capturedSq,
         enpassantSquare,
-        castlingRights
+        castlingRights,
+        zobristKey
     });
+    zobristKey ^= Zobrist::side();
+    zobristKey ^= Zobrist::castling(castlingRights);
+    zobristKey ^= Zobrist::piece(movingPiece,from);
     if(move.captured != EMPTY) {
+        zobristKey ^= Zobrist::piece(move.captured, capturedSq);
         removeFromPieceList(capturedSq, move.captured);
         board[capturedSq] = EMPTY;
     }
-
-
-
+    
     movePieceInList(movingPiece, from, to);
 
     
@@ -195,11 +198,21 @@ void Board::makeMove(const Move& move) {
     board[from] = EMPTY;
 
 
-    if(move.castling) {
-        if(to == 6) { movePieceInList(WROOK, 7, 5); board[5] = WROOK; board[7] = EMPTY; }
-        else if(to == 2) { movePieceInList(WROOK, 0, 3); board[3] = WROOK; board[0] = EMPTY; }
-        else if(to == 62) { movePieceInList(BROOK, 63, 61); board[61] = BROOK; board[63] = EMPTY; }
-        else if(to == 58) { movePieceInList(BROOK, 56, 59); board[59] = BROOK; board[56] = EMPTY; }
+    if (move.castling) {
+        int rookFrom, rookTo;
+        if (to == 6)      { rookFrom = 7;  rookTo = 5;  }
+        else if (to == 2) { rookFrom = 0;  rookTo = 3;  }
+        else if (to == 62){ rookFrom = 63; rookTo = 61; }
+        else              { rookFrom = 56; rookTo = 59; }
+
+        int rook = board[rookFrom];
+        zobristKey ^= Zobrist::piece(rook, rookFrom);
+
+        movePieceInList(rook, rookFrom, rookTo);
+        board[rookFrom] = EMPTY;
+        board[rookTo] = rook;
+
+        zobristKey ^= Zobrist::piece(rook, rookTo);
     }
 
     if(move.promotion != EMPTY) {
@@ -209,7 +222,14 @@ void Board::makeMove(const Move& move) {
     }
 
     updateCastlingRights(move, movingPiece);
+    zobristKey ^= castlingRights;
+    if(enpassantSquare != -1) {
+        zobristKey ^= Zobrist::enpassant(enpassantSquare);
+    }
     updateEnPassantSquare(move);
+    if(enpassantSquare != -1) {
+        zobristKey ^= Zobrist::enpassant(enpassantSquare);
+    }
 
     whiteToPlay = !whiteToPlay;
 }
@@ -220,13 +240,13 @@ void Board::undoMove(const Move& move) {
     whiteToPlay = !whiteToPlay;
 
     int from = move.from;
-    int to   = move.to;
+    int to  = move.to;
 
     int movingPiece = (move.promotion != EMPTY) ? move.promotion : board[to];
 
     if(move.promotion != EMPTY) {
         removeFromPieceList(to, move.promotion);
-        board[to] = movingPiece = (whiteToPlay ? WPAWN : BPAWN); // original pawn
+        board[to] = movingPiece = (whiteToPlay ? WPAWN : BPAWN);
         addToPieceList(to, movingPiece);
     }
 
@@ -247,9 +267,9 @@ void Board::undoMove(const Move& move) {
         else if(to == 58) { movePieceInList(BROOK, 59, 56); board[56] = BROOK; board[59] = EMPTY; }
     }
 
-    // Restore state
     enpassantSquare = history.back().prevEnpassant;
     castlingRights  = history.back().prevCastle;
+    zobristKey = history.back().zobrist;
     history.pop_back();
 }
 
