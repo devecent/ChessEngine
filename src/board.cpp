@@ -1,5 +1,6 @@
 #include "board.h"
 #include "movegen.h"
+#include "zobrist.h"
 #include <iostream>
 #include <sstream>
 
@@ -452,6 +453,23 @@ bool Board::isStalemate() {
     MoveGen movegen(*this);
     int kingsq = whiteToPlay ? whitePieces[5][0] : blackPieces[5][0];
     return !isSquareAttacked(kingsq,!whiteToPlay) && movegen.generateMoves(whiteToPlay).empty();
+}
+
+uint64_t Board::computeZobristKey() {
+    uint64_t hash = 0;
+    for(int i = 0; i < 64; i++) {
+        if(board[i] != 0) {
+            hash ^= Zobrist::piece(board[i],i);
+        }
+    }
+    if(enpassantSquare != -1) {
+        hash ^= Zobrist::enpassant(enpassantSquare);
+    }
+    if(whiteToPlay) {
+        hash ^= Zobrist::side();
+    }
+    hash ^= Zobrist::castling(castlingRights);
+    return hash;
 }
 
 

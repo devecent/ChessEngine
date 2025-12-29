@@ -11,7 +11,6 @@ int main() {
     Board board;
     Search search(board);
     UCI uci(board, search);
-
     uci.loop();
     return 0;
 }

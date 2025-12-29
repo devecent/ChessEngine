@@ -39,6 +39,7 @@ class Board {
     void loadFEN(const std::string& fen);
     bool isCheckmate();
     bool isStalemate();
+    uint64_t computeZobristKey();
 };
 
 #endif

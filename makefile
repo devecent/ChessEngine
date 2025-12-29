@@ -4,7 +4,6 @@ CXXFLAGS = -std=c++20 -O2
 
 
 SRC_DIR = src
-BUILD_DIR = build
 
 SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 
