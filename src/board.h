@@ -41,6 +41,7 @@ class Board {
     bool isCheckmate();
     bool isStalemate();
     uint64_t computeZobristKey();
+    bool enPassantCapturable();
 };
 
 #endif

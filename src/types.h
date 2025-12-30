@@ -3,6 +3,7 @@
 
 
 #include <string>
+#include <cstdint>
 
 enum Piece {
     EMPTY = 0,

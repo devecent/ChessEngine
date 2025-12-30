@@ -3,6 +3,7 @@
 #include "search.h"
 #include "uci.h"
 #include <iostream>
+#include <assert.h>
 
 
 using namespace std;
@@ -10,7 +11,10 @@ using namespace std;
 int main() {
     Board board;
     Search search(board);
-    UCI uci(board, search);
+    OpeningBook openingBook("./openingbook/gm2001.bin");
+    openingBook.load("./openingbook/komodo.bin");
+    openingBook.load("./openingbook/rodent.bin");
+    UCI uci(board, search, openingBook);
     uci.loop();
     return 0;
 }

@@ -3,6 +3,7 @@
 #include "zobrist.h"
 #include <iostream>
 #include <sstream>
+#include <cassert>
 
 using namespace std;
 
@@ -36,6 +37,7 @@ Board::Board() {
     castlingRights = 0b1111;
     whiteToPlay = true;
     zobristKey = 0x463b96181691fc9c;
+    enpassantSquare = -1;
 }
 
 inline bool isWhite(int piece) {
@@ -182,6 +184,11 @@ void Board::makeMove(const Move& move) {
         castlingRights,
         zobristKey
     });
+    //I highly suspect there's some sort of bug with zobristKey,
+    //but I do not know and can't find it if there is
+    if(enPassantCapturable()) {
+        zobristKey ^= Zobrist::enpassant(enpassantSquare);
+    }
     zobristKey ^= Zobrist::side();
     zobristKey ^= Zobrist::castling(castlingRights);
     zobristKey ^= Zobrist::piece(movingPiece,from);
@@ -196,7 +203,7 @@ void Board::makeMove(const Move& move) {
     
     board[to] = movingPiece;
     board[from] = EMPTY;
-
+    zobristKey ^= Zobrist::piece(board[to],to);
 
     if (move.castling) {
         int rookFrom, rookTo;
@@ -217,21 +224,19 @@ void Board::makeMove(const Move& move) {
 
     if(move.promotion != EMPTY) {
         removeFromPieceList(to, board[to]);
+        zobristKey ^= Zobrist::piece(board[to],to);
         board[to] = move.promotion;
+        zobristKey ^= Zobrist::piece(board[to],to);
         addToPieceList(to, move.promotion);
     }
 
     updateCastlingRights(move, movingPiece);
-    zobristKey ^= castlingRights;
-    if(enpassantSquare != -1) {
-        zobristKey ^= Zobrist::enpassant(enpassantSquare);
-    }
+    zobristKey ^= Zobrist::castling(castlingRights);
     updateEnPassantSquare(move);
-    if(enpassantSquare != -1) {
+    whiteToPlay = !whiteToPlay;
+    if(enPassantCapturable()) {
         zobristKey ^= Zobrist::enpassant(enpassantSquare);
     }
-
-    whiteToPlay = !whiteToPlay;
 }
 
 
@@ -460,7 +465,7 @@ void Board::loadFEN(const string& fen) {
     else {
         enpassantSquare = -1;
     }
-    
+    zobristKey = computeZobristKey();
 }
 
 bool Board::isCheckmate() {
@@ -482,7 +487,7 @@ uint64_t Board::computeZobristKey() {
             hash ^= Zobrist::piece(board[i],i);
         }
     }
-    if(enpassantSquare != -1) {
+    if(enPassantCapturable()) {
         hash ^= Zobrist::enpassant(enpassantSquare);
     }
     if(whiteToPlay) {
@@ -491,6 +496,21 @@ uint64_t Board::computeZobristKey() {
     hash ^= Zobrist::castling(castlingRights);
     return hash;
 }
+
+bool Board::enPassantCapturable() {
+    if (enpassantSquare == -1) return false;
+
+    int file = enpassantSquare % 8;
+    int p = whiteToPlay ? WPAWN : BPAWN;
+    if (file > 0 && board[enpassantSquare-1] == p) {
+       return true;
+    }
+    if (file < 7 && board[enpassantSquare+1] == p) {
+        return true;
+    }
+    return false;
+}
+
 
 
 void Board::print() {

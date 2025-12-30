@@ -47,6 +47,9 @@ void UCI::handlePosition(const std::string& line) {
     } else if (token == "fen") {
         string fen;
         getline(iss, fen);
+        if(fen[0] == ' ') {
+            fen.erase(0,1);
+        }
         board.loadFEN(fen);
     }
     // apply moves if present
@@ -78,6 +81,44 @@ void UCI::handleGo(const std::string& line) {
             iss >> movestogo;
         }
     }
-    Move bestMove = search.findBestMove(search.thinkTime(wtime, btime, winc, binc));
-    std::cout << "bestmove " << bestMove.toUci() << endl;
+    int openingMove = openingBook.getMove(board.zobristKey);
+    if(openingMove != 0) {
+        cout << "bestmove " << polyglotMoveToUCI(openingMove) << endl;
+    }
+    else {
+        Move bestMove = search.findBestMove(search.thinkTime(wtime, btime, winc, binc));
+        cout << "bestmove " << bestMove.toUci() << endl;
+    }
+}
+
+string UCI::polyglotMoveToUCI(uint16_t move) {
+     int toFile = move  & 0x7;
+    int toRank  = (move >> 3)  & 0x7;
+    int fromFile = (move >> 6)  & 0x7;
+    int fromRank = (move >> 9)  & 0x7;
+    int promo = (move >> 12) & 0x7;
+
+    char fromFileChar = 'a' + fromFile;
+    char fromRankChar = '1' + fromRank;
+    char toFileChar   = 'a' + toFile;
+    char toRankChar   = '1' + toRank;
+
+    string uci;
+    uci += fromFileChar;
+    uci += fromRankChar;
+    uci += toFileChar;
+    uci += toRankChar;
+
+    if (promo) {
+        char promoChar = 'q'; // default
+        switch (promo) {
+            case 1: promoChar = 'n'; break;
+            case 2: promoChar = 'b'; break;
+            case 3: promoChar = 'r'; break;
+            case 4: promoChar = 'q'; break;
+        }
+        uci += promoChar;
+    }
+
+    return uci;
 }

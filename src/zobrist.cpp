@@ -14,7 +14,7 @@ uint64_t Zobrist::piece(int piece, int sq) {
 
 uint64_t Zobrist::enpassant(int sq) {
     int file = sq%8;
-    return enPassantKeys[772+file];
+    return RANDOM_ARRAY[file+772];
 }
 
 uint64_t Zobrist::side() {

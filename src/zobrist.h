@@ -180,10 +180,6 @@ class Zobrist {
         return arr;
     }();
 
-    static constexpr std::array<uint64_t, 8> enPassantKeys = {
-        RANDOM_ARRAY[773], RANDOM_ARRAY[774], RANDOM_ARRAY[775], RANDOM_ARRAY[776],
-        RANDOM_ARRAY[777], RANDOM_ARRAY[778], RANDOM_ARRAY[779], RANDOM_ARRAY[772]
-    };
 
     static constexpr int MAP_HASH_PIECE[12] = { 1,3,5,7,9,11,0,2,4,6,8,10 };
 
