@@ -16,9 +16,11 @@ class Board {
     std::vector<int> blackPieces[6];
     int enpassantSquare;
     int castlingRights;
+    int fiftyMoveCounter;
     bool whiteToPlay;
     int squareIndex[64];
     std::vector<Undo> history;
+    std::vector<uint64_t> repetitionHistory;
     uint64_t zobristKey;
 
     Board();
@@ -42,6 +44,7 @@ class Board {
     bool isStalemate();
     uint64_t computeZobristKey();
     bool enPassantCapturable();
+    bool isRepeated();
 };
 
 #endif

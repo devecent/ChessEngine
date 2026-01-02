@@ -34,10 +34,12 @@ Board::Board() {
         }
     }
     history.reserve(256);
+    repetitionHistory.reserve(128);
     castlingRights = 0b1111;
     whiteToPlay = true;
     zobristKey = 0x463b96181691fc9c;
     enpassantSquare = -1;
+    fiftyMoveCounter = 0;
 }
 
 inline bool isWhite(int piece) {
@@ -182,7 +184,8 @@ void Board::makeMove(const Move& move) {
         capturedSq,
         enpassantSquare,
         castlingRights,
-        zobristKey
+        zobristKey,
+        fiftyMoveCounter
     });
     //I highly suspect there's some sort of bug with zobristKey,
     //but I do not know and can't find it if there is
@@ -192,10 +195,17 @@ void Board::makeMove(const Move& move) {
     zobristKey ^= Zobrist::side();
     zobristKey ^= Zobrist::castling(castlingRights);
     zobristKey ^= Zobrist::piece(movingPiece,from);
+    fiftyMoveCounter++;
+    if(isPawn(movingPiece)) {
+        repetitionHistory.clear();
+        fiftyMoveCounter = 0;
+    }
     if(move.captured != EMPTY) {
+        repetitionHistory.clear();
         zobristKey ^= Zobrist::piece(move.captured, capturedSq);
         removeFromPieceList(capturedSq, move.captured);
         board[capturedSq] = EMPTY;
+        fiftyMoveCounter = 0;
     }
     
     movePieceInList(movingPiece, from, to);
@@ -237,6 +247,7 @@ void Board::makeMove(const Move& move) {
     if(enPassantCapturable()) {
         zobristKey ^= Zobrist::enpassant(enpassantSquare);
     }
+    repetitionHistory.push_back(zobristKey);
 }
 
 
@@ -275,7 +286,11 @@ void Board::undoMove(const Move& move) {
     enpassantSquare = history.back().prevEnpassant;
     castlingRights  = history.back().prevCastle;
     zobristKey = history.back().zobrist;
+    fiftyMoveCounter = history.back().fiftyMoveCounter;
     history.pop_back();
+    if(!repetitionHistory.empty()) {
+        repetitionHistory.pop_back();
+    }
 }
 
 
@@ -511,6 +526,15 @@ bool Board::enPassantCapturable() {
     return false;
 }
 
+bool Board::isRepeated() {
+    if(repetitionHistory.size() < 2) return false;
+    for(int i = repetitionHistory.size()-2; i >= 0; i--) {
+        if(repetitionHistory[i] == zobristKey) {
+            return true;
+        }
+    }
+    return false;
+}
 
 
 void Board::print() {

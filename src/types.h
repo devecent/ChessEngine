@@ -17,13 +17,16 @@ struct Undo {
     int prevEnpassant;
     int prevCastle;
     uint64_t zobrist;
+    int fiftyMoveCounter;
 };
 
 //castling rights
 const int WHITE_KINGSIDE  = 1;
 const int WHITE_QUEENSIDE = 2;
 const int BLACK_KINGSIDE  = 4;
-const int BLACK_QUEENSIDE = 8; 
+const int BLACK_QUEENSIDE = 8;
+
+const int MATE_SCORE = 1000000;
 
 
 #endif

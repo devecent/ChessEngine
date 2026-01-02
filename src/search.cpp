@@ -24,7 +24,7 @@ Move Search::findBestMove(int timeLimitMs) {
     Move bestMove;
     auto startTime = chrono::steady_clock::now();
     for(int depth = 1; depth <= maxDepth; depth++) {
-        int bestEval = -1000000;
+        int bestEval = -MATE_SCORE;
         Move currentBestMove;
 
         MoveGen movegen(board);
@@ -59,16 +59,22 @@ done:
 
 
 int Search::negamax(int depth, int alpha, int beta, int ply) {
+    if(board.fiftyMoveCounter >= 100 || board.isRepeated()) return 0;
     if(depth == 0) {
         return Evaluation(board).evaluate();
     }
-    int maxEval = -1000000;
+    int score;
+    if(transpositionTable.lookUp(board.zobristKey, depth, alpha, beta, score)) {
+        return score;
+    }
+    int ogalpha = alpha;
+    int maxEval = -MATE_SCORE;
     MoveGen movegen(board);
     vector<Move> moves = movegen.generateMoves(board.whiteToPlay);
     if(moves.empty()) {
         int kingsq = board.whiteToPlay ? board.whitePieces[5][0] : board.blackPieces[5][0];
         if(board.isSquareAttacked(kingsq,!board.whiteToPlay)) {
-            return -1000000+ply;
+            return -MATE_SCORE+ply;
         }
         return 0;
     }
@@ -80,5 +86,6 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
         alpha = max(alpha,eval);
         if(alpha >= beta) break;
     }
+    transpositionTable.push(board.zobristKey, depth, ogalpha, beta, maxEval, ply);
     return maxEval;
 }
