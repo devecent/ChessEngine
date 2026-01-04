@@ -14,8 +14,10 @@ int Evaluation::evaluate() {
     int blackEval = 0;
     whiteEval += countMaterial(1);
     whiteEval += pieceSquareEvaluation(1);
+    whiteEval += kingActivity(1);
     blackEval += countMaterial(0);
     blackEval += pieceSquareEvaluation(0);
+    blackEval += kingActivity(0);
     int sign = board.whiteToPlay ? 1 : -1;
     int eval = whiteEval-blackEval;
     return sign * eval;
@@ -37,6 +39,7 @@ int Evaluation::pieceSquareEvaluation(bool white) {
     int earlyPawn = 0;
     int latePawn = 0;
     auto& pieces = white ? board.whitePieces : board.blackPieces;
+    float endgameT = white ? blackEndGameT : whiteEndGameT;
     for(int sq : pieces[0]) {
         earlyPawn += readfromTable(PawnTable, sq, white);
         latePawn += readfromTable(PawnsEndTable, sq, white);
@@ -60,6 +63,35 @@ int Evaluation::pieceSquareEvaluation(bool white) {
     value += (int)(kingEarly*(1-endgameT));
     value += (int)(kingLate*endgameT);
     return value;
+}
+
+inline int distance(int sq1, int sq2) {
+    int rank1 = sq1 / 8;
+    int file1 = sq1 % 8;
+    int rank2 = sq2 / 8;
+    int file2 = sq2 % 8;
+    return abs(rank2 - rank1) + abs(file2 - file1);
+}
+
+inline int distanceFromCenter(int sq) {
+    int centers[4] = {27, 28, 35, 36};
+    int mn = 20;
+    for(int i = 0; i < 4; i++) {
+        mn = min(mn,distance(centers[i],sq));
+    }
+    return mn;
+}
+
+int Evaluation::kingActivity(bool white) {
+    if(countMaterial(white) <= countMaterial(!white) + PawnValue*2) return 0;
+    float endgameT = white ? blackEndGameT : whiteEndGameT;
+    if(endgameT > 0) return 0;
+    int value = 0;
+    int friendlyKingSq = white ? board.whitePieces[5][0] : board.blackPieces[5][0];
+    int enemyKingSq = white ? board.blackPieces[5][0] : board.whitePieces[5][0];
+    value += (14-distance(friendlyKingSq, enemyKingSq)) * 4;
+    value += distanceFromCenter(enemyKingSq)*10;
+    return (int)value*endgameT;
 }
 
 
