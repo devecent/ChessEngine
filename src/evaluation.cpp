@@ -1,5 +1,7 @@
 #include "evaluation.h"
 #include "piecesquaretable.h"
+#include <vector>
+#include <algorithm>
 
 using namespace std;
 
@@ -12,12 +14,16 @@ const int QueenValue = 900;
 int Evaluation::evaluate() {
     int whiteEval = 0;
     int blackEval = 0;
+    int pieceSquareEvalWhite = pieceSquareEvaluation(1);
+    int pieceSquareEvalBlack = pieceSquareEvaluation(0);
     whiteEval += countMaterial(1);
-    whiteEval += pieceSquareEvaluation(1);
+    whiteEval += pieceSquareEvalWhite;
     whiteEval += kingActivity(1);
+    whiteEval += kingSafety(1, pieceSquareEvalBlack);
     blackEval += countMaterial(0);
-    blackEval += pieceSquareEvaluation(0);
+    blackEval += pieceSquareEvalBlack;
     blackEval += kingActivity(0);
+    blackEval += kingSafety(0, pieceSquareEvalWhite);
     int sign = board.whiteToPlay ? 1 : -1;
     int eval = whiteEval-blackEval;
     return sign * eval;
@@ -92,6 +98,37 @@ int Evaluation::kingActivity(bool white) {
     value += (14-distance(friendlyKingSq, enemyKingSq)) * 4;
     value += distanceFromCenter(enemyKingSq)*10;
     return (int)value*endgameT;
+}
+
+int Evaluation::kingSafety(bool white, int pieceSquareEval) {
+    float endgameT = white ? blackEndGameT : whiteEndGameT;
+    return 0;
+    if(endgameT >= 1) return 0;
+    int kingsq = white ? board.whitePieces[5][0] : board.blackPieces[5][0];
+    int kingFile = kingsq % 8;
+    int friendlyPawn = white ? WPAWN : BPAWN;
+    int penalty = 0;
+    if(kingFile <= 2 || kingFile >= 5) {
+        vector<int>& squares = white ? kingPawnShieldsWhite[kingsq] : kingPawnShieldsBlack[kingsq];
+        for(int i = 0; i < squares.size()/2; i++) {
+            if(board.board[squares[i]] != friendlyPawn) {
+                if(squares.size() > 3 && board.board[squares[i+3]] == friendlyPawn) {
+                    penalty += kingPawnShieldScores[i+3];
+                }
+                else {
+                    penalty += kingPawnShieldScores[i];
+                }
+            }
+            penalty *= penalty;
+        }
+    }
+    else {
+        float enemyDevelopment = (float)(pieceSquareEval+10)/130.0;
+        enemyDevelopment = clamp(enemyDevelopment,0.0f,1.0f);
+        penalty += (int)(50*enemyDevelopment);
+    }
+    float weight = 1-endgameT;
+    return (int)-penalty*weight;
 }
 
 
