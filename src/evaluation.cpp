@@ -102,7 +102,6 @@ int Evaluation::kingActivity(bool white) {
 
 int Evaluation::kingSafety(bool white, int pieceSquareEval) {
     float endgameT = white ? blackEndGameT : whiteEndGameT;
-    return 0;
     if(endgameT >= 1) return 0;
     int kingsq = white ? board.whitePieces[5][0] : board.blackPieces[5][0];
     int kingFile = kingsq % 8;
@@ -112,15 +111,15 @@ int Evaluation::kingSafety(bool white, int pieceSquareEval) {
         vector<int>& squares = white ? kingPawnShieldsWhite[kingsq] : kingPawnShieldsBlack[kingsq];
         for(int i = 0; i < squares.size()/2; i++) {
             if(board.board[squares[i]] != friendlyPawn) {
-                if(squares.size() > 3 && board.board[squares[i+3]] == friendlyPawn) {
+                if(i+3 < squares.size() && board.board[squares[i+3]] == friendlyPawn) {
                     penalty += kingPawnShieldScores[i+3];
                 }
                 else {
                     penalty += kingPawnShieldScores[i];
                 }
             }
-            penalty *= penalty;
         }
+        penalty *= penalty;
     }
     else {
         float enemyDevelopment = (float)(pieceSquareEval+10)/130.0;

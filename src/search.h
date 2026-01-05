@@ -19,6 +19,7 @@ class Search {
     TranspositionTable& transpositionTable;
     int maxDepth = 40;
     int negamax(int depth, int alpha, int beta, int ply);
+    void moveOrder(std::vector<Move>& moves, Move& ttMove);
 
     
 

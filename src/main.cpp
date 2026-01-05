@@ -12,9 +12,7 @@ int main() {
     Board board;
     TranspositionTable transpositionTable(board);
     Search search(board, transpositionTable);
-    OpeningBook openingBook("./openingbook/gm2001.bin");
-    openingBook.load("./openingbook/komodo.bin");
-    openingBook.load("./openingbook/rodent.bin");
+    OpeningBook openingBook("./openingbook/komodo.bin");
     UCI uci(board, search, openingBook);
     uci.loop();
     return 0;

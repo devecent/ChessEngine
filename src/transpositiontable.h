@@ -14,6 +14,7 @@ struct Entry {
     int score;
     int8_t depth;
     uint8_t flag;
+    Move move;
 };
 
 class TranspositionTable {
@@ -25,8 +26,8 @@ class TranspositionTable {
         table.resize(tableSize);
     }
 
-    bool lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore);
-    void push(uint64_t key, int depth, int alpha, int beta, int score, int ply);
+    bool lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove);
+    void push(uint64_t key, int depth, int alpha, int beta, int score, int ply, Move& move);
 
     private:
 

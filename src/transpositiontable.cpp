@@ -1,11 +1,12 @@
 #include "transpositiontable.h"
 
-bool TranspositionTable::lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore) {
+bool TranspositionTable::lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove) {
     Entry& e = table[key & (tableSize-1)];
     if(key != e.key) {
         return false;
     }
     if(e.depth >= depth) {
+        outMove = e.move;
         if(e.flag == EXACT) {
             outScore = e.score;
             return true;
@@ -22,7 +23,7 @@ bool TranspositionTable::lookUp(uint64_t key, int depth, int alpha, int beta, in
     return false;
 }
 
-void TranspositionTable::push(uint64_t key, int depth, int alpha, int beta, int score, int ply) {
+void TranspositionTable::push(uint64_t key, int depth, int alpha, int beta, int score, int ply, Move& move) {
     Entry& e = table[key & (tableSize-1)];
     if(score > MATE_SCORE) score += ply;
     if(score < -MATE_SCORE) score -= ply;
@@ -30,6 +31,7 @@ void TranspositionTable::push(uint64_t key, int depth, int alpha, int beta, int 
     e.key = key;
     e.depth = depth;
     e.score = score;
+    e.move = move;
     if(score <= alpha) {
         e.flag = UPPER;
     }

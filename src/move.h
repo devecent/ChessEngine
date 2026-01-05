@@ -9,7 +9,7 @@ class Move {
 
     public:
 
-    Move() : from(0), to(0), captured(EMPTY), promotion(EMPTY), castling(false) {}
+    Move() : from(-1), to(-1), captured(EMPTY), promotion(EMPTY), castling(false) {}
     Move(int f, int t, int c, Piece p, bool cast) : from(f), to(t), captured(c), promotion(p), castling(cast) {} 
     int from;
     int to;
@@ -24,7 +24,8 @@ class Move {
 
     std::string toUci() const;
 
-
+    bool operator==(const Move& other) const;
+    Move& operator=(const Move& other);
 };
 
 #endif

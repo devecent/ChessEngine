@@ -34,8 +34,7 @@ void OpeningBook::load(string file) {
         if(!in) break;
         uint16_t move = readU16(in);
         if(!in) break;
-        //i don't know... this just works for some reason
-        in.ignore(2);
+        in.ignore(6);
         openingBook[key].push_back(move);
     }
 }
