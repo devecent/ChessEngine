@@ -61,13 +61,7 @@ std::string Move::toString() const {
     }
 
     if (movingPiece == WKING || movingPiece == BKING) {
-        if (abs(to - from) == 3) {
-            castling = true;
-            to--;
-        }
-        else if(abs(to - from) == 2) {
-            castling = true;
-        }
+        if(abs(to % 8 - from % 8) == 2) castling = true;
     }
     int captured = board.board[to];
     if (movingPiece == WPAWN || movingPiece == BPAWN) {
@@ -84,11 +78,6 @@ std::string Move::toString() const {
     int fromRank = from / 8;
     int toFile   = to % 8;
     int toRank   = to / 8;
-    if(castling) {
-        if(toFile == 6) {
-            toFile++;
-        }
-    }
     std::string uci;
     uci += ('a' + fromFile);
     uci += ('1' + fromRank);

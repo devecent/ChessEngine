@@ -97,6 +97,15 @@ string UCI::polyglotMoveToUCI(uint16_t move) {
     int fromFile = (move >> 6)  & 0x7;
     int fromRank = (move >> 9)  & 0x7;
     int promo = (move >> 12) & 0x7;
+    //polyglot for some reason encodes as king to rook and not king to the square its going
+    if (fromRank == 0 && fromFile == 4) {
+        if (toFile == 0) toFile = 2;
+        else if (toFile == 7) toFile = 6;
+    }
+    if (fromRank == 7 && fromFile == 4) {
+        if (toFile == 0) toFile = 2;
+        else if (toFile == 7) toFile = 6;
+    }
 
     char fromFileChar = 'a' + fromFile;
     char fromRankChar = '1' + fromRank;
