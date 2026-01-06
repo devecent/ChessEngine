@@ -18,9 +18,10 @@ class Search {
     Board& board;
     TranspositionTable& transpositionTable;
     int maxDepth = 40;
+    int maxQuiescence = 10;
     int negamax(int depth, int alpha, int beta, int ply);
     void moveOrder(std::vector<Move>& moves, Move& ttMove);
-
+    int quiesenceSearch(int alpha, int beta, int ply);
     
 
 };

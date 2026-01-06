@@ -124,7 +124,7 @@ int Evaluation::kingSafety(bool white, int pieceSquareEval) {
     else {
         float enemyDevelopment = (float)(pieceSquareEval+10)/130.0;
         enemyDevelopment = clamp(enemyDevelopment,0.0f,1.0f);
-        penalty += (int)(50*enemyDevelopment);
+        penalty += (int)(58*enemyDevelopment);
     }
     float weight = 1-endgameT;
     return (int)-penalty*weight;

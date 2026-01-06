@@ -150,3 +150,29 @@ void Search::moveOrder(vector<Move>& moves, Move& ttMove) {
         moves[i] = temp[i].second;
     }
 }
+
+int Search::quiesenceSearch(int alpha, int beta, int ply) {
+    vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
+    if(moves.empty()) {
+        int kingsq = board.whiteToPlay ? board.whitePieces[5][0] : board.blackPieces[5][0];
+        if(board.isSquareAttacked(kingsq,!board.whiteToPlay)) {
+            return -MATE_SCORE+ply;
+        }
+        return 0;
+    }
+    int eval = Evaluation(board).evaluate();
+    if(ply >= maxQuiescence) return eval;
+    if(eval >= beta) return beta;
+    alpha = max(alpha,eval);
+    Move empty;
+    moveOrder(moves, empty);
+    for(Move& move : moves) {
+        if(move.captured == EMPTY) continue;
+        board.makeMove(move);
+        int score = -quiesenceSearch(-beta, -alpha, ply+1);
+        board.undoMove(move);
+        if(score >= beta) return beta;
+        alpha = max(alpha, score);
+    }
+    return alpha;
+}
