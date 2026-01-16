@@ -36,6 +36,7 @@ void UCI::handleNewGame() {
     board = Board();
 }
 
+
 void UCI::handlePosition(const std::string& line) {
     istringstream iss(line);
     string token;
