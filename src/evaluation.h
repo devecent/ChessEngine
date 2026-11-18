@@ -3,6 +3,7 @@
 
 #include "board.h"
 #include "move.h"
+#include <algorithm>
 
 class Evaluation {
 
@@ -11,8 +12,6 @@ class Evaluation {
     Evaluation(Board& b) : board(b) {
         whiteEndGameT = endgameWeight(1);
         blackEndGameT = endgameWeight(0);
-        kingPawnShieldsWhite = precomputeKingPawnShields(1);
-        kingPawnShieldsBlack = precomputeKingPawnShields(0);
     }
     int evaluate();
 
@@ -21,8 +20,8 @@ class Evaluation {
     Board& board;
     float blackEndGameT;
     float whiteEndGameT;
-    std::vector<std::vector<int>> kingPawnShieldsWhite;
-    std::vector<std::vector<int>> kingPawnShieldsBlack;
+    static const std::vector<std::vector<int>> kingPawnShieldsWhite;
+    static const std::vector<std::vector<int>> kingPawnShieldsBlack;
     int kingPawnShieldScores[6] = { 4, 7, 4, 3, 6, 3 };
 
     int countMaterial(bool white);
@@ -44,7 +43,7 @@ class Evaluation {
     int pieceSquareEvaluation(bool white);
     int kingActivity(bool white);
     int kingSafety(bool white, int pieceSquareEval);
-    std::vector<std::vector<int>> precomputeKingPawnShields(bool white) {
+    static std::vector<std::vector<int>> precomputeKingPawnShields(bool white) {
         std::vector<std::vector<int>> kingPawnShields(64);
         for(int sq = 0; sq < 64; sq++) {
             int file = sq % 8;

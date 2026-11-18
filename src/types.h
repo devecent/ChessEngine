@@ -11,6 +11,7 @@ enum Piece {
     BPAWN = 7, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING
 };
 
+
 struct Undo {
     int capturedPiece;
     int capturedSquare;

@@ -1,16 +1,9 @@
 #include "movegen.h"
+#include "boardHelpers.h"
 #include <math.h>
 #include <iostream>
 
 using namespace std;
-
-inline bool isWhite(int piece) {
-    return piece >= WPAWN && piece <= WKING;
-}
-
-inline bool isBlack(int piece) {
-    return piece >= BPAWN && piece <= BKING;
-}
 
 void MoveGen::generatePawnMoves(int sq, vector<Move>& moves, bool white) {
     int rank = sq/8;

@@ -25,7 +25,7 @@ class Move {
     std::string toUci() const;
 
     bool operator==(const Move& other) const;
-    Move& operator=(const Move& other);
+    Move& operator=(const Move& other) = default;
 };
 
 #endif

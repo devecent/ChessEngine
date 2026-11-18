@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <algorithm>
 
 using namespace std;
 
@@ -13,6 +14,7 @@ using namespace std;
 Board::Board() {
     for(int i = 0; i < 64; i++) {
         board[i] = EMPTY;
+        squareIndex[i] = -1;
     }
     int backRank[8] = { WROOK, WKNIGHT, WBISHOP, WQUEEN, WKING, WBISHOP, WKNIGHT, WROOK };
     for(int i = 0; i < 8; i++) {
@@ -35,12 +37,13 @@ Board::Board() {
         }
     }
     history.reserve(256);
-    repetitionHistory.reserve(128);
+    repetitionHistory.reserve(256);
     castlingRights = 0b1111;
     whiteToPlay = true;
     zobristKey = 0x463b96181691fc9c;
     enpassantSquare = -1;
     fiftyMoveCounter = 0;
+    repetitionHistory.push_back(zobristKey);
 }
 
 
@@ -132,11 +135,9 @@ void Board::makeMove(const Move& move) {
     zobristKey ^= Zobrist::piece(movingPiece,from);
     fiftyMoveCounter++;
     if(isPawn(movingPiece)) {
-        repetitionHistory.clear();
         fiftyMoveCounter = 0;
     }
     if(move.captured != EMPTY) {
-        repetitionHistory.clear();
         zobristKey ^= Zobrist::piece(move.captured, capturedSq);
         removeFromPieceList(capturedSq, move.captured);
         board[capturedSq] = EMPTY;
@@ -415,7 +416,10 @@ void Board::loadFEN(const string& fen) {
     else {
         enpassantSquare = -1;
     }
+    fiftyMoveCounter = halfmove;
+    history.clear();
     zobristKey = computeZobristKey();
+    repetitionHistory.assign(1, zobristKey);
 }
 
 bool Board::isCheckmate() {
@@ -462,11 +466,10 @@ bool Board::enPassantCapturable() {
 }
 
 bool Board::isRepeated() {
-    if(repetitionHistory.size() < 2) return false;
-    for(int i = repetitionHistory.size()-2; i >= 0; i--) {
-        if(repetitionHistory[i] == zobristKey) {
-            return true;
-        }
+    const int current = static_cast<int>(repetitionHistory.size()) - 1;
+    const int first = std::max(0, current - fiftyMoveCounter);
+    for(int i = current - 2; i >= first; i -= 2) {
+        if(repetitionHistory[i] == zobristKey) return true;
     }
     return false;
 }

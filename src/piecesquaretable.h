@@ -90,23 +90,8 @@ const std::array<int,64> KingEndTable = {
 
 
 
-std::array<int,64> getFlippedTable(const std::array<int,64>& table) {
-    std::array<int,64> flipped;
-    for(int i = 0; i < 64; i++) {
-        int rank = i / 8;
-        int file = i % 8;
-        flipped[i] = table[(7 - rank) * 8 + file];
-    }
-    return flipped;
-}
-
-int readfromTable(const std::array<int,64>& table, int sq, bool white) {
-    if(white) {
-        return table[sq];
-    }
-    else {
-        return getFlippedTable(table)[sq];
-    }
+inline int readfromTable(const std::array<int,64>& table, int sq, bool white) {
+    return table[white ? (sq ^ 56) : sq];
 }
 
 #endif
