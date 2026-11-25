@@ -155,10 +155,16 @@ int Search::negamax(int depth, int alpha, int beta, int ply, bool allowNull) {
 
 int Search::quiescence(int alpha, int beta, int ply) {
     if(std::chrono::steady_clock::now() >= deadline) throw SearchTimeout{};
-    std::vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
     const int kingSquare = board.whiteToPlay ? board.whitePieces[5][0] : board.blackPieces[5][0];
     const bool inCheck = board.isSquareAttacked(kingSquare, !board.whiteToPlay);
-    if(moves.empty()) return inCheck ? -MATE_SCORE + ply : 0;
+    MoveGen gen(board);
+    // In check every evasion is searched; otherwise only captures and
+    // promotions, generated directly rather than filtered out of all moves.
+    std::vector<Move> moves = inCheck ? gen.generateMoves(board.whiteToPlay)
+                                      : gen.generateTacticalMoves(board.whiteToPlay);
+    // No legal tactical move doesn't mean no legal move: check for stalemate.
+    if(moves.empty() && (inCheck || !gen.hasLegalMove(board.whiteToPlay)))
+        return inCheck ? -MATE_SCORE + ply : 0;
     if(board.fiftyMoveCounter >= 100 || board.isRepeated()) return 0;
 
     int best = -MATE_SCORE;
@@ -166,9 +172,6 @@ int Search::quiescence(int alpha, int beta, int ply) {
         best = Evaluation(board).evaluate();
         if(best >= beta) return best;
         alpha = std::max(alpha, best);
-        moves.erase(std::remove_if(moves.begin(), moves.end(), [](const Move& move) {
-            return move.isQuiet();
-        }), moves.end());
     }
 
     Move noTTMove;

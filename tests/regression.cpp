@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -53,6 +54,13 @@ void roundTrips(Board& b, int depth) {
     Board before = b;
     auto moves = MoveGen(b).generateMoves(b.whiteToPlay);
     check(samePosition(before, b), "legal generation changed position/history");
+    // Captures-only generation must be exactly the non-quiet legal moves, in order.
+    std::vector<Move> expectedTactical;
+    std::copy_if(moves.begin(), moves.end(), std::back_inserter(expectedTactical),
+                 [](const Move& m) { return !m.isQuiet(); });
+    check(MoveGen(b).generateTacticalMoves(b.whiteToPlay) == expectedTactical, "tactical generation mismatch");
+    check(MoveGen(b).hasLegalMove(b.whiteToPlay) == !moves.empty(), "hasLegalMove mismatch");
+    check(samePosition(before, b), "tactical generation changed position/history");
     for(const auto& m : moves) {
         b.makeMove(m);
         roundTrips(b, depth - 1);
@@ -93,6 +101,14 @@ int main() {
         check(b.perft(3) == 97862, "kiwipete perft(3)");
         b.loadFEN("4k3/P7/8/3pP3/8/8/8/4K3 w - d6 0 1");
         roundTrips(b, 2);
+        // Pins, en passant discovered checks, promotions with captures.
+        b.loadFEN("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
+        roundTrips(b, 3);
+        b.loadFEN("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+        roundTrips(b, 2);
+        b.loadFEN("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1");
+        check(!MoveGen(b).hasLegalMove(b.whiteToPlay) && MoveGen(b).generateTacticalMoves(b.whiteToPlay).empty(),
+              "stalemate has legal moves");
 
         b = Board();
         for(const char* move : {"g1f3", "g8f6", "f3g1", "f6g8"}) b.makeMove(Move::fromUci(move, b));

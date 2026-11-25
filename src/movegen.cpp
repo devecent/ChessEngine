@@ -27,10 +27,10 @@ void MoveGen::generatePawnMoves(int sq, std::vector<Move>& moves, bool white) {
                 moves.push_back(Move{sq, oneForward, EMPTY, BQUEEN, false});
             }
         }
-        else {
+        else if(!tacticalOnly) {
             moves.push_back(Move{sq, oneForward, EMPTY, EMPTY, false});
         }
-        if(rank == startRank && twoForward >= 0 && twoForward < 64 && !b[twoForward]) {
+        if(!tacticalOnly && rank == startRank && twoForward >= 0 && twoForward < 64 && !b[twoForward]) {
             moves.push_back(Move{sq, twoForward, EMPTY, EMPTY, false});
         }
     }
@@ -83,8 +83,9 @@ void MoveGen::generatePawnMoves(int sq, std::vector<Move>& moves, bool white) {
 }
 
 // Slides from sq along SlideDirs[first .. first+3], stopping at the first
-// occupied square (captured if it's an enemy piece).
-static void generateSlides(const int (&b)[64], int sq, int first, std::vector<Move>& moves, bool white) {
+// occupied square (captured if it's an enemy piece). Quiet moves are skipped
+// when tacticalOnly is set.
+static void generateSlides(const int (&b)[64], int sq, int first, std::vector<Move>& moves, bool white, bool tacticalOnly) {
     for(int d = first; d < first + 4; d++) {
         const int offset = attacks::SlideDirs[d].offset;
         int curr = sq;
@@ -96,17 +97,17 @@ static void generateSlides(const int (&b)[64], int sq, int first, std::vector<Mo
                 }
                 break;
             }
-            moves.push_back(Move{sq, curr, EMPTY, EMPTY, false});
+            if(!tacticalOnly) moves.push_back(Move{sq, curr, EMPTY, EMPTY, false});
         }
     }
 }
 
 void MoveGen::generateBishopMoves(int sq, std::vector<Move>& moves, bool white) {
-    generateSlides(board.board, sq, attacks::FirstDiagonal, moves, white);
+    generateSlides(board.board, sq, attacks::FirstDiagonal, moves, white, tacticalOnly);
 }
 
 void MoveGen::generateRookMoves(int sq, std::vector<Move>& moves, bool white) {
-    generateSlides(board.board, sq, attacks::FirstOrthogonal, moves, white);
+    generateSlides(board.board, sq, attacks::FirstOrthogonal, moves, white, tacticalOnly);
 }
 
 void MoveGen::generateKingMoves(int sq, std::vector<Move>& moves, bool white) {
@@ -115,6 +116,7 @@ void MoveGen::generateKingMoves(int sq, std::vector<Move>& moves, bool white) {
     for(int i = 0; i < targets.count; i++) {
         const int to = targets.squares[i];
         if(b[to] && isWhite(b[to]) == white) continue;
+        if(!b[to] && tacticalOnly) continue;
         moves.push_back(Move{sq, to, b[to], EMPTY, false});
     }
 }
@@ -130,7 +132,7 @@ void MoveGen::generateKnightMoves(int sq, std::vector<Move>& moves, bool white) 
     for(int i = 0; i < targets.count; i++) {
         const int dest = targets.squares[i];
         if(!b[dest]) {
-            moves.push_back(Move{sq, dest, EMPTY, EMPTY, false});
+            if(!tacticalOnly) moves.push_back(Move{sq, dest, EMPTY, EMPTY, false});
         }
         else if(isWhite(b[dest]) != white) {
             moves.push_back(Move{sq, dest, b[dest], EMPTY, false});
@@ -183,38 +185,62 @@ std::vector<Move> MoveGen::generatePseudoLegalMoves(bool whiteToMove) {
     for(int sq : pieces[5]) {
         generateKingMoves(sq,moves,whiteToMove);
     }
-    generateCastlingMoves(moves,whiteToMove);
+    if(!tacticalOnly) generateCastlingMoves(moves,whiteToMove);
     return moves;
+}
+
+MoveGen::LegalityContext MoveGen::legalityContext(bool whiteToMove) {
+    LegalityContext ctx;
+    ctx.ownKing = whiteToMove ? board.whitePieces[5][0] : board.blackPieces[5][0];
+    ctx.inCheck = board.isSquareAttacked(ctx.ownKing, !whiteToMove);
+    return ctx;
+}
+
+bool MoveGen::isLegal(const Move& move, const LegalityContext& ctx, bool whiteToMove) {
+    // Shortcut: when not in check, a non-king, non-en-passant move can only
+    // expose the king if the moving piece is pinned, and a pinned piece must
+    // share a rank, file or diagonal with its king. Anything else is legal
+    // without the make/undo below.
+    if(!ctx.inCheck && move.from() != ctx.ownKing && !board.isEnPassant(move)) {
+        const int dr = move.from() / 8 - ctx.ownKing / 8, df = move.from() % 8 - ctx.ownKing % 8;
+        if(dr != 0 && df != 0 && dr != df && dr != -df) return true;
+    }
+    board.makeMove(move);
+    const int kingSquare = whiteToMove ? board.whitePieces[5][0] : board.blackPieces[5][0];
+    const bool legal = !board.isSquareAttacked(kingSquare, !whiteToMove);
+    board.undoMove(move);
+    return legal;
+}
+
+void MoveGen::filterLegal(std::vector<Move>& moves, bool whiteToMove) {
+    // Filter in place (stable, keeps generation order).
+    const LegalityContext ctx = legalityContext(whiteToMove);
+    size_t legal = 0;
+    for(const Move move : moves) {
+        if(isLegal(move, ctx, whiteToMove)) moves[legal++] = move;
+    }
+    moves.resize(legal);
 }
 
 std::vector<Move> MoveGen::generateMoves(bool whiteToMove) {
-    // Filter in place (stable, keeps generation order) instead of copying the
-    // legal moves into a second vector: one allocation per call instead of two.
     std::vector<Move> moves = generatePseudoLegalMoves(whiteToMove);
-    const int ownKing = whiteToMove ? board.whitePieces[5][0] : board.blackPieces[5][0];
-    const bool inCheck = board.isSquareAttacked(ownKing, !whiteToMove);
-    const int kingRank = ownKing / 8, kingFile = ownKing % 8;
-    size_t legal = 0;
-    for(const Move move : moves) {
-        // Shortcut: when not in check, a non-king, non-en-passant move can only
-        // expose the king if the moving piece is pinned, and a pinned piece must
-        // share a rank, file or diagonal with its king. Anything else is legal
-        // without the make/undo below.
-        if(!inCheck && move.from() != ownKing && !board.isEnPassant(move)) {
-            const int dr = move.from() / 8 - kingRank, df = move.from() % 8 - kingFile;
-            if(dr != 0 && df != 0 && dr != df && dr != -df) {
-                moves[legal++] = move;
-                continue;
-            }
-        }
-        board.makeMove(move);
-        int kingSquare = whiteToMove ? board.whitePieces[5][0] : board.blackPieces[5][0];
-        if(!board.isSquareAttacked(kingSquare,!whiteToMove)) {
-            moves[legal++] = move;
-        }
-        board.undoMove(move);
-    }
-    moves.resize(legal);
+    filterLegal(moves, whiteToMove);
     return moves;
 }
 
+std::vector<Move> MoveGen::generateTacticalMoves(bool whiteToMove) {
+    tacticalOnly = true;
+    std::vector<Move> moves = generatePseudoLegalMoves(whiteToMove);
+    tacticalOnly = false;
+    filterLegal(moves, whiteToMove);
+    return moves;
+}
+
+bool MoveGen::hasLegalMove(bool whiteToMove) {
+    const std::vector<Move> moves = generatePseudoLegalMoves(whiteToMove);
+    const LegalityContext ctx = legalityContext(whiteToMove);
+    for(const Move& move : moves) {
+        if(isLegal(move, ctx, whiteToMove)) return true;
+    }
+    return false;
+}
