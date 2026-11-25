@@ -1,5 +1,7 @@
 #include "move.h"
 #include "board.h"
+#include <cstdlib>
+#include <string>
 
 
 using namespace std;
@@ -30,6 +32,14 @@ std::string Move::toString() const {
     }
 
    Move Move::fromUci(const std::string& uci, Board& board) {
+
+    auto validSquare = [](char file, char rank) {
+        return file >= 'a' && file <= 'h' && rank >= '1' && rank <= '8';
+    };
+    if ((uci.length() != 4 && uci.length() != 5)
+        || !validSquare(uci[0], uci[1]) || !validSquare(uci[2], uci[3])) {
+        return Move();
+    }
 
     int from = (uci[0] - 'a') + (uci[1] - '1') * 8;
     int to   = (uci[2] - 'a') + (uci[3] - '1') * 8;

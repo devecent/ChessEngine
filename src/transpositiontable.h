@@ -1,7 +1,10 @@
 #ifndef TRANSPOSITIONTABLE_H
 #define TRANSPOSITIONTABLE_H
 
+#include <cstdint>
+#include <vector>
 #include "board.h"
+#include "move.h"
 
 enum TTFLag : uint8_t {
     EXACT,
@@ -11,28 +14,28 @@ enum TTFLag : uint8_t {
 
 struct Entry {
     uint64_t key;
-    int score;
+    int32_t score;
     int8_t depth;
     uint8_t flag;
-    Move move;
+    uint16_t move;
 };
+static_assert(sizeof(Entry) == 16, "TT entry should stay 16 bytes");
 
 class TranspositionTable {
 
     public:
 
     TranspositionTable(Board& board) : board(board){
-        // just a setsize
         table.resize(tableSize);
     }
 
     bool lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove, int ply = 0);
-    void push(uint64_t key, int depth, int alpha, int beta, int score, int ply, Move& move);
+    void push(uint64_t key, int depth, int alpha, int beta, int score, int ply, const Move& move);
 
     private:
 
     Board& board;
-    const int tableSize = 1 << 22;
+    static constexpr std::size_t tableSize = std::size_t{1} << 22;
     std::vector<Entry> table;
 };
 

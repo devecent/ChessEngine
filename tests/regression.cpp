@@ -271,6 +271,20 @@ int main() {
         check(tt.lookUp(125, 5, -MATE_SCORE, MATE_SCORE, score, out, 10), "TT bound classified after normalization");
         out = Move();
         check(!tt.lookUp(123, 6, -MATE_SCORE, MATE_SCORE, score, out) && out == m, "shallow TT ordering move missing");
+        for(const Move& packed : {Move(52, 60, EMPTY, WQUEEN, false), Move(9, 0, WROOK, BKNIGHT, false),
+                                  Move(4, 6, EMPTY, EMPTY, true), Move(60, 58, EMPTY, EMPTY, true)}) {
+            tt.push(126, 5, -MATE_SCORE, MATE_SCORE, 0, 0, packed);
+            out = Move();
+            tt.lookUp(126, 5, -MATE_SCORE, MATE_SCORE, score, out);
+            check(out == packed, "TT packed move round trip");
+        }
+
+        uci.handlePosition("position startpos moves e2e4 e2e4 e7e5");
+        check(b.board[28] == WPAWN && b.board[52] == BPAWN && !b.whiteToPlay, "illegal UCI move not rejected");
+        uci.handlePosition("position startpos moves zz");
+        check(samePosition(b, Board()), "malformed UCI move changed board");
+        check(Move::fromUci("e9", b).from == -1 && Move::fromUci("i2i4", b).from == -1, "malformed fromUci accepted");
+        check(book.getMove(b.zobristKey) == 0 && book.openingBook.empty(), "book lookup inserted entry");
 
         b.loadFEN("7k/8/8/8/8/8/8/KQ6 w - - 0 1");
         check(Evaluation(b).kingActivity(true) > 0, "endgame activity disabled");

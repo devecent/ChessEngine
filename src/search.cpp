@@ -5,6 +5,7 @@
 #include "zobrist.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 using namespace std;
 

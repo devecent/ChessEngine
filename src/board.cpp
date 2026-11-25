@@ -6,6 +6,7 @@
 #include <sstream>
 #include <cassert>
 #include <algorithm>
+#include <cstdlib>
 
 using namespace std;
 

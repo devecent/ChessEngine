@@ -1,6 +1,6 @@
 #include "movegen.h"
 #include "boardHelpers.h"
-#include <math.h>
+#include <cstdlib>
 #include <iostream>
 
 using namespace std;

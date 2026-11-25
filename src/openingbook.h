@@ -5,21 +5,23 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <random>
 #include <unordered_map>
 
 
 class OpeningBook {
     public:
 
-    OpeningBook(std::string file);
+    explicit OpeningBook(const std::string& file);
     uint16_t getMove(uint64_t key);
-    void load(std::string file);
-    
+    void load(const std::string& file);
+
 
     private:
 
     std::unordered_map<uint64_t, std::vector<uint16_t>> openingBook;
-   
+    std::mt19937 rng{std::random_device{}()};
+
 };
 
 

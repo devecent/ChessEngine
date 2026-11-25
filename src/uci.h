@@ -28,7 +28,8 @@ class UCI {
     void handleNewGame();
     void handlePosition(const std::string& line);
     void handleGo(const std::string& line);
-    
+    bool findLegalMove(const std::string& uci, Move& out);
+
 };
 
 

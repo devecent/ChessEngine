@@ -37,7 +37,6 @@ from standard input; enter `uci`, `isready`, or `quit` to check it manually.
 
 Use `-DCMAKE_BUILD_TYPE=Debug` in a separate MinGW build directory for debugging.
 To build only the engine, configure with `-DBUILD_TESTING=OFF`.
-The original Makefile remains available, but CMake is the documented build path.
 
 Regression coverage and direct compiler instructions are in
 [tests/README-regression.md](tests/README-regression.md).

@@ -1,6 +1,5 @@
 .vscode/launch.json
 .vscode/tasks.json
-devecent.exe
 playtest/
 /build/
 /build-*/

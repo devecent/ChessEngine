@@ -2,6 +2,7 @@
 #include "piecesquaretable.h"
 #include <vector>
 #include <algorithm>
+#include <cstdlib>
 
 using namespace std;
 
@@ -100,7 +101,7 @@ int Evaluation::kingActivity(bool white) {
     int enemyKingSq = white ? board.blackPieces[5][0] : board.whitePieces[5][0];
     value += (14-distance(friendlyKingSq, enemyKingSq)) * 4;
     value += distanceFromCenter(enemyKingSq)*10;
-    return (int)value*endgameT;
+    return static_cast<int>(value * endgameT);
 }
 
 int Evaluation::kingSafety(bool white, int pieceSquareEval) {
@@ -130,7 +131,7 @@ int Evaluation::kingSafety(bool white, int pieceSquareEval) {
         penalty += (int)(58*enemyDevelopment);
     }
     float weight = 1-endgameT;
-    return (int)-penalty*weight;
+    return static_cast<int>(-penalty * weight);
 }
 
 

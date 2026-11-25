@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include "move.h"
+#include "movegen.h"
 
 using namespace std;
 
@@ -54,12 +55,27 @@ void UCI::handlePosition(const std::string& line) {
         }
         board.loadFEN(fen);
     }
-    // apply moves if present
+    // apply moves if present; stop at the first one that isn't legal here
+    // rather than letting a malformed or illegal move corrupt the board
     while (iss >> token && token != "moves") {}
     while (iss >> token) {
-        Move move = Move::fromUci(token, board);
+        Move move;
+        if (!findLegalMove(token, move)) {
+            cout << "info string ignoring illegal move " << token << endl;
+            break;
+        }
         board.makeMove(move);
     }
+}
+
+bool UCI::findLegalMove(const std::string& uci, Move& out) {
+    for (const Move& move : MoveGen(board).generateMoves(board.whiteToPlay)) {
+        if (move.toUci() == uci) {
+            out = move;
+            return true;
+        }
+    }
+    return false;
 }
 
 void UCI::handleGo(const std::string& line) {
@@ -83,9 +99,12 @@ void UCI::handleGo(const std::string& line) {
             iss >> movestogo;
         }
     }
-    int openingMove = openingBook.getMove(board.zobristKey);
-    if(openingMove != 0) {
-        cout << "bestmove " << polyglotMoveToUCI(openingMove) << endl;
+    uint16_t openingMove = openingBook.getMove(board.zobristKey);
+    Move bookMove;
+    // a hash collision or bad book entry could give an illegal move, so only
+    // play the book move if it's legal in this position
+    if(openingMove != 0 && findLegalMove(polyglotMoveToUCI(openingMove), bookMove)) {
+        cout << "bestmove " << bookMove.toUci() << endl;
     }
     else {
         Move bestMove = search.findBestMove(search.thinkTime(wtime, btime, winc, binc));

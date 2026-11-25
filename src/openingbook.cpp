@@ -1,7 +1,5 @@
 #include "openingbook.h"
 #include <fstream>
-#include <iostream>
-#include <random>
 
 using namespace std;
 
@@ -10,7 +8,7 @@ static uint64_t readU64(ifstream& in) {
     uint64_t x = 0;
     for (int i = 0; i < 8; i++) {
         int c = in.get();
-        x = (x << 8) | c;
+        x = (x << 8) | static_cast<uint8_t>(c);
     }
     return x;
 }
@@ -18,15 +16,15 @@ static uint64_t readU64(ifstream& in) {
 static uint16_t readU16(ifstream& in) {
     int hi = in.get();
     int lo = in.get();
-    return (hi << 8) | lo;
+    return static_cast<uint16_t>((static_cast<uint8_t>(hi) << 8) | static_cast<uint8_t>(lo));
 }
 
 
-OpeningBook::OpeningBook(string file) {
+OpeningBook::OpeningBook(const string& file) {
     load(file);
 }
 
-void OpeningBook::load(string file) {
+void OpeningBook::load(const string& file) {
     ifstream in(file, ios::binary);
     if(!in) return;
     while(true) {
@@ -39,14 +37,15 @@ void OpeningBook::load(string file) {
     }
 }
 
-mt19937 rng(std::random_device{}());
-
 uint16_t OpeningBook::getMove(uint64_t key) {
-    vector<uint16_t>& moves = openingBook[key];
-    if(moves.empty()) {
+    // find() rather than operator[], which would insert an empty entry for
+    // every position looked up that isn't in the book.
+    auto it = openingBook.find(key);
+    if(it == openingBook.end() || it->second.empty()) {
         return 0;
     }
-    uniform_int_distribution<int> dist(0, moves.size() - 1);
+    const vector<uint16_t>& moves = it->second;
+    uniform_int_distribution<size_t> dist(0, moves.size() - 1);
     return moves[dist(rng)];
 }
 

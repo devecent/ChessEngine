@@ -1,6 +1,7 @@
 #ifndef BOARDHELPERS_H
 #define BOARDHELPERS_H
 
+#include <string>
 #include "types.h"
 
 inline bool isWhite(int piece) {
