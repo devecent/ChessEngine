@@ -1,9 +1,11 @@
 #include "board.h"
 #include "movegen.h"
 #include "zobrist.h"
+#include "boardHelpers.h"
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <algorithm>
 
 using namespace std;
 
@@ -12,6 +14,7 @@ using namespace std;
 Board::Board() {
     for(int i = 0; i < 64; i++) {
         board[i] = EMPTY;
+        squareIndex[i] = -1;
     }
     int backRank[8] = { WROOK, WKNIGHT, WBISHOP, WQUEEN, WKING, WBISHOP, WKNIGHT, WROOK };
     for(int i = 0; i < 8; i++) {
@@ -34,61 +37,15 @@ Board::Board() {
         }
     }
     history.reserve(256);
-    repetitionHistory.reserve(128);
+    repetitionHistory.reserve(256);
     castlingRights = 0b1111;
     whiteToPlay = true;
     zobristKey = 0x463b96181691fc9c;
     enpassantSquare = -1;
     fiftyMoveCounter = 0;
+    repetitionHistory.push_back(zobristKey);
 }
 
-inline bool isWhite(int piece) {
-    return piece >= WPAWN && piece <= WKING;
-}
-
-inline bool isPawn(int p) {
-    return p == WPAWN || p == BPAWN;
-}
-inline bool isKnight(int p) {
-    return p == WKNIGHT || p == BKNIGHT;
-}
-inline bool isBishop(int p) {
-    return p == WBISHOP || p == BBISHOP;
-}
-inline bool isRook(int p) {
-    return p == WROOK || p == BROOK;
-}
-inline bool isQueen(int p) {
-    return p == WQUEEN || p == BQUEEN;
-}
-inline bool isKing(int p) {
-    return p == WKING || p == BKING;
-}
-
-inline int charToPiece(char c) {
-    switch(c) {
-        case 'P': return WPAWN;
-        case 'N': return WKNIGHT;
-        case 'B': return WBISHOP;
-        case 'R': return WROOK;
-        case 'Q': return WQUEEN;
-        case 'K': return WKING;
-        case 'p': return BPAWN;
-        case 'n': return BKNIGHT;
-        case 'b': return BBISHOP;
-        case 'r': return BROOK;
-        case 'q': return BQUEEN;
-        case 'k': return BKING;
-        default : return EMPTY;
-    }
-}
-
-inline int squareStringToIndex(const std::string& sq) {
-    if(sq == "-") return -1;
-    int file = sq[0] - 'a';
-    int rank = sq[1] - '1';
-    return rank * 8 + file;
-}
 
 void Board::updateCastlingRights(const Move& move, int movingPiece) {
     int from = move.from;
@@ -118,23 +75,6 @@ void Board::updateEnPassantSquare(const Move& move) {
     }
 }
 
-inline int pieceType(int piece) {
-    switch (piece) {
-        case WPAWN:
-        case BPAWN: return 0;
-        case WKNIGHT:
-        case BKNIGHT: return 1;
-        case WBISHOP:
-        case BBISHOP: return 2;
-        case WROOK:
-        case BROOK: return 3;
-        case WQUEEN:
-        case BQUEEN: return 4;
-        case WKING:
-        case BKING: return 5;
-        default: return -1;
-    }
-}
 
 void Board::removeFromPieceList(int sq, int piece) {
     auto& pieces = isWhite(piece) ? 
@@ -187,8 +127,6 @@ void Board::makeMove(const Move& move) {
         zobristKey,
         fiftyMoveCounter
     });
-    //I highly suspect there's some sort of bug with zobristKey,
-    //but I do not know and can't find it if there is
     if(enPassantCapturable()) {
         zobristKey ^= Zobrist::enpassant(enpassantSquare);
     }
@@ -197,11 +135,9 @@ void Board::makeMove(const Move& move) {
     zobristKey ^= Zobrist::piece(movingPiece,from);
     fiftyMoveCounter++;
     if(isPawn(movingPiece)) {
-        repetitionHistory.clear();
         fiftyMoveCounter = 0;
     }
     if(move.captured != EMPTY) {
-        repetitionHistory.clear();
         zobristKey ^= Zobrist::piece(move.captured, capturedSq);
         removeFromPieceList(capturedSq, move.captured);
         board[capturedSq] = EMPTY;
@@ -480,7 +416,10 @@ void Board::loadFEN(const string& fen) {
     else {
         enpassantSquare = -1;
     }
+    fiftyMoveCounter = halfmove;
+    history.clear();
     zobristKey = computeZobristKey();
+    repetitionHistory.assign(1, zobristKey);
 }
 
 bool Board::isCheckmate() {
@@ -527,11 +466,10 @@ bool Board::enPassantCapturable() {
 }
 
 bool Board::isRepeated() {
-    if(repetitionHistory.size() < 2) return false;
-    for(int i = repetitionHistory.size()-2; i >= 0; i--) {
-        if(repetitionHistory[i] == zobristKey) {
-            return true;
-        }
+    const int current = static_cast<int>(repetitionHistory.size()) - 1;
+    const int first = std::max(0, current - fiftyMoveCounter);
+    for(int i = current - 2; i >= first; i -= 2) {
+        if(repetitionHistory[i] == zobristKey) return true;
     }
     return false;
 }

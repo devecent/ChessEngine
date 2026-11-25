@@ -26,7 +26,7 @@ class TranspositionTable {
         table.resize(tableSize);
     }
 
-    bool lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove);
+    bool lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove, int ply = 0);
     void push(uint64_t key, int depth, int alpha, int beta, int score, int ply, Move& move);
 
     private:

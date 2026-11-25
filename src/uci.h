@@ -1,5 +1,5 @@
 #ifndef UCI_H
-#define UCI_h
+#define UCI_H
 
 #include "board.h"
 #include "search.h"

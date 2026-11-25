@@ -1,22 +1,25 @@
 #include "transpositiontable.h"
 
-bool TranspositionTable::lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove) {
+bool TranspositionTable::lookUp(uint64_t key, int depth, int alpha, int beta, int& outScore, Move& outMove, int ply) {
     Entry& e = table[key & (tableSize-1)];
     if(key != e.key) {
         return false;
     }
+    outMove = e.move;
+    int score = e.score;
+    if(score >= MATE_SCORE - 1000) score -= ply;
+    if(score <= -MATE_SCORE + 1000) score += ply;
     if(e.depth >= depth) {
-        outMove = e.move;
         if(e.flag == EXACT) {
-            outScore = e.score;
+            outScore = score;
             return true;
         }
-        else if(e.flag == LOWER && e.score >= beta) {
-            outScore = e.score;
+        else if(e.flag == LOWER && score >= beta) {
+            outScore = score;
             return true;
         }
-        else if(e.flag == UPPER && e.score <= alpha) {
-            outScore = e.score;
+        else if(e.flag == UPPER && score <= alpha) {
+            outScore = score;
             return true;
         }
     }
@@ -25,17 +28,18 @@ bool TranspositionTable::lookUp(uint64_t key, int depth, int alpha, int beta, in
 
 void TranspositionTable::push(uint64_t key, int depth, int alpha, int beta, int score, int ply, Move& move) {
     Entry& e = table[key & (tableSize-1)];
-    if(score > MATE_SCORE) score += ply;
-    if(score < -MATE_SCORE) score -= ply;
+    const int searchScore = score;
+    if(score >= MATE_SCORE - 1000) score += ply;
+    if(score <= -MATE_SCORE + 1000) score -= ply;
     if(e.key == key && depth < e.depth) return;
     e.key = key;
     e.depth = depth;
     e.score = score;
     e.move = move;
-    if(score <= alpha) {
+    if(searchScore <= alpha) {
         e.flag = UPPER;
     }
-    else if(score >= beta) {
+    else if(searchScore >= beta) {
         e.flag = LOWER;
     }
     else {

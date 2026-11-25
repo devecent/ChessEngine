@@ -74,6 +74,7 @@ std::string Move::toString() const {
 
 
     std::string Move::toUci() const {
+    if(from < 0 || to < 0) return "0000";
     int fromFile = from % 8;
     int fromRank = from / 8;
     int toFile   = to % 8;
@@ -101,11 +102,3 @@ bool Move::operator==(const Move &other) const {
     return from == other.from && to == other.to && promotion == other.promotion && castling == other.castling;
 }
 
-Move& Move::operator=(const Move &other)  {
-    from = other.from;
-    to = other.to;
-    captured = other.captured;
-    promotion = other.promotion;
-    castling = other.castling;
-    return *this;
-}

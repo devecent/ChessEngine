@@ -8,8 +8,7 @@ using namespace std;
 
 void UCI::loop() {
     string line;
-    while(true) {
-        getline(cin,line);
+    while(getline(cin,line)) {
         istringstream iss(line);
         string token;
         iss >> token;
@@ -36,6 +35,7 @@ void UCI::handleNewGame() {
     board = Board();
 }
 
+
 void UCI::handlePosition(const std::string& line) {
     istringstream iss(line);
     string token;
@@ -46,9 +46,11 @@ void UCI::handlePosition(const std::string& line) {
         board = Board();
     } else if (token == "fen") {
         string fen;
-        getline(iss, fen);
-        if(fen[0] == ' ') {
-            fen.erase(0,1);
+        for(int i = 0; i < 6; ++i) {
+            string field;
+            if(!(iss >> field)) return;
+            if(i != 0) fen += ' ';
+            fen += field;
         }
         board.loadFEN(fen);
     }

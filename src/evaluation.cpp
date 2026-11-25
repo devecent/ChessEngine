@@ -5,6 +5,9 @@
 
 using namespace std;
 
+const vector<vector<int>> Evaluation::kingPawnShieldsWhite = Evaluation::precomputeKingPawnShields(true);
+const vector<vector<int>> Evaluation::kingPawnShieldsBlack = Evaluation::precomputeKingPawnShields(false);
+
 const int PawnValue = 100;
 const int KnightValue = 300;
 const int BishopValue = 320;
@@ -91,7 +94,7 @@ inline int distanceFromCenter(int sq) {
 int Evaluation::kingActivity(bool white) {
     if(countMaterial(white) <= countMaterial(!white) + PawnValue*2) return 0;
     float endgameT = white ? blackEndGameT : whiteEndGameT;
-    if(endgameT > 0) return 0;
+    if(endgameT <= 0) return 0;
     int value = 0;
     int friendlyKingSq = white ? board.whitePieces[5][0] : board.blackPieces[5][0];
     int enemyKingSq = white ? board.blackPieces[5][0] : board.whitePieces[5][0];
@@ -108,8 +111,8 @@ int Evaluation::kingSafety(bool white, int pieceSquareEval) {
     int friendlyPawn = white ? WPAWN : BPAWN;
     int penalty = 0;
     if(kingFile <= 2 || kingFile >= 5) {
-        vector<int>& squares = white ? kingPawnShieldsWhite[kingsq] : kingPawnShieldsBlack[kingsq];
-        for(int i = 0; i < squares.size()/2; i++) {
+        const vector<int>& squares = white ? kingPawnShieldsWhite[kingsq] : kingPawnShieldsBlack[kingsq];
+        for(size_t i = 0; i < squares.size()/2; i++) {
             if(board.board[squares[i]] != friendlyPawn) {
                 if(i+3 < squares.size() && board.board[squares[i+3]] == friendlyPawn) {
                     penalty += kingPawnShieldScores[i+3];
