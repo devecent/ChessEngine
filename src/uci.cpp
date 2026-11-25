@@ -5,13 +5,12 @@
 #include "move.h"
 #include "movegen.h"
 
-using namespace std;
 
 void UCI::loop() {
-    string line;
-    while(getline(cin,line)) {
-        istringstream iss(line);
-        string token;
+    std::string line;
+    while(std::getline(std::cin,line)) {
+        std::istringstream iss(line);
+        std::string token;
         iss >> token;
         if (token == "uci") handleUCI();
         else if (token == "isready") handleIsReady();
@@ -23,13 +22,13 @@ void UCI::loop() {
 }
 
 void UCI::handleUCI() {
-    cout << "id name Devecent" << endl;
-    cout << "id author Deven Nguyen" << endl;
-    cout << "uciok" << endl;
+    std::cout << "id name Devecent" << std::endl;
+    std::cout << "id author Deven Nguyen" << std::endl;
+    std::cout << "uciok" << std::endl;
 }
 
 void UCI::handleIsReady() {
-    cout << "readyok" << endl;
+    std::cout << "readyok" << std::endl;
 }
 
 void UCI::handleNewGame() {
@@ -38,17 +37,17 @@ void UCI::handleNewGame() {
 
 
 void UCI::handlePosition(const std::string& line) {
-    istringstream iss(line);
-    string token;
+    std::istringstream iss(line);
+    std::string token;
     iss >> token;
 
     iss >> token;
     if (token == "startpos") {
         board = Board();
     } else if (token == "fen") {
-        string fen;
+        std::string fen;
         for(int i = 0; i < 6; ++i) {
-            string field;
+            std::string field;
             if(!(iss >> field)) return;
             if(i != 0) fen += ' ';
             fen += field;
@@ -61,7 +60,7 @@ void UCI::handlePosition(const std::string& line) {
     while (iss >> token) {
         Move move;
         if (!findLegalMove(token, move)) {
-            cout << "info string ignoring illegal move " << token << endl;
+            std::cout << "info string ignoring illegal move " << token << std::endl;
             break;
         }
         board.makeMove(move);
@@ -104,15 +103,15 @@ void UCI::handleGo(const std::string& line) {
     // a hash collision or bad book entry could give an illegal move, so only
     // play the book move if it's legal in this position
     if(openingMove != 0 && findLegalMove(polyglotMoveToUCI(openingMove), bookMove)) {
-        cout << "bestmove " << bookMove.toUci() << endl;
+        std::cout << "bestmove " << bookMove.toUci() << std::endl;
     }
     else {
         Move bestMove = search.findBestMove(search.thinkTime(wtime, btime, winc, binc));
-        cout << "bestmove " << bestMove.toUci() << endl;
+        std::cout << "bestmove " << bestMove.toUci() << std::endl;
     }
 }
 
-string UCI::polyglotMoveToUCI(uint16_t move) {
+std::string UCI::polyglotMoveToUCI(uint16_t move) {
      int toFile = move  & 0x7;
     int toRank  = (move >> 3)  & 0x7;
     int fromFile = (move >> 6)  & 0x7;
@@ -133,7 +132,7 @@ string UCI::polyglotMoveToUCI(uint16_t move) {
     char toFileChar   = 'a' + toFile;
     char toRankChar   = '1' + toRank;
 
-    string uci;
+    std::string uci;
     uci += fromFileChar;
     uci += fromRankChar;
     uci += toFileChar;

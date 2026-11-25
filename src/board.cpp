@@ -2,13 +2,14 @@
 #include "movegen.h"
 #include "zobrist.h"
 #include "boardHelpers.h"
+#include "attacks.h"
 #include <iostream>
 #include <sstream>
 #include <cassert>
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 
-using namespace std;
 
 
 
@@ -49,8 +50,8 @@ Board::Board() {
 
 
 void Board::updateCastlingRights(const Move& move, int movingPiece) {
-    int from = move.from;
-    int to   = move.to;
+    int from = move.from();
+    int to   = move.to();
 
     if (movingPiece == WKING)
         castlingRights &= ~(WHITE_KINGSIDE | WHITE_QUEENSIDE);
@@ -65,12 +66,12 @@ void Board::updateCastlingRights(const Move& move, int movingPiece) {
 
 
 void Board::updateEnPassantSquare(const Move& move) {
-    int to = move.to;
-    int from = move.from;
+    int to = move.to();
+    int from = move.from();
     int p = board[to];
     enpassantSquare = -1;
     if(isPawn(p)) {
-        if(abs(from-to) == 16) {
+        if(std::abs(from-to) == 16) {
             enpassantSquare = to;
         }
     }
@@ -108,20 +109,20 @@ void Board::movePieceInList(int piece, int from, int to) {
 }
 
 bool Board::isEnPassant(const Move& m) const {
-    return (m.captured != EMPTY &&
-            board[m.from] == (whiteToPlay ? WPAWN : BPAWN) &&
-            m.to != m.from + (whiteToPlay ? 8 : -8) &&
-            board[m.to] == EMPTY);
+    return (m.captured() != EMPTY &&
+            board[m.from()] == (whiteToPlay ? WPAWN : BPAWN) &&
+            m.to() != m.from() + (whiteToPlay ? 8 : -8) &&
+            board[m.to()] == EMPTY);
 }
 
 
 void Board::makeMove(const Move& move) {
-    int from = move.from;
-    int to   = move.to;
+    int from = move.from();
+    int to   = move.to();
     int movingPiece = board[from];
     int capturedSq = (isEnPassant(move)) ? enpassantSquare : to;
     history.push_back(Undo{
-        move.captured,
+        move.captured(),
         capturedSq,
         enpassantSquare,
         castlingRights,
@@ -138,9 +139,9 @@ void Board::makeMove(const Move& move) {
     if(isPawn(movingPiece)) {
         fiftyMoveCounter = 0;
     }
-    if(move.captured != EMPTY) {
-        zobristKey ^= Zobrist::piece(move.captured, capturedSq);
-        removeFromPieceList(capturedSq, move.captured);
+    if(move.captured() != EMPTY) {
+        zobristKey ^= Zobrist::piece(move.captured(), capturedSq);
+        removeFromPieceList(capturedSq, move.captured());
         board[capturedSq] = EMPTY;
         fiftyMoveCounter = 0;
     }
@@ -152,7 +153,7 @@ void Board::makeMove(const Move& move) {
     board[from] = EMPTY;
     zobristKey ^= Zobrist::piece(board[to],to);
 
-    if (move.castling) {
+    if (move.castling()) {
         int rookFrom, rookTo;
         if (to == 6)      { rookFrom = 7;  rookTo = 5;  }
         else if (to == 2) { rookFrom = 0;  rookTo = 3;  }
@@ -169,12 +170,12 @@ void Board::makeMove(const Move& move) {
         zobristKey ^= Zobrist::piece(rook, rookTo);
     }
 
-    if(move.promotion != EMPTY) {
+    if(move.promotion() != EMPTY) {
         removeFromPieceList(to, board[to]);
         zobristKey ^= Zobrist::piece(board[to],to);
-        board[to] = move.promotion;
+        board[to] = move.promotion();
         zobristKey ^= Zobrist::piece(board[to],to);
-        addToPieceList(to, move.promotion);
+        addToPieceList(to, move.promotion());
     }
 
     updateCastlingRights(move, movingPiece);
@@ -192,13 +193,13 @@ void Board::makeMove(const Move& move) {
 void Board::undoMove(const Move& move) {
     whiteToPlay = !whiteToPlay;
 
-    int from = move.from;
-    int to  = move.to;
+    int from = move.from();
+    int to  = move.to();
 
-    int movingPiece = (move.promotion != EMPTY) ? move.promotion : board[to];
+    int movingPiece = (move.promotion() != EMPTY) ? move.promotion() : board[to];
 
-    if(move.promotion != EMPTY) {
-        removeFromPieceList(to, move.promotion);
+    if(move.promotion() != EMPTY) {
+        removeFromPieceList(to, move.promotion());
         board[to] = movingPiece = (whiteToPlay ? WPAWN : BPAWN);
         addToPieceList(to, movingPiece);
     }
@@ -207,13 +208,13 @@ void Board::undoMove(const Move& move) {
     board[from] = movingPiece;
     board[to] = EMPTY;
 
-    if(move.captured != EMPTY) {
+    if(move.captured() != EMPTY) {
         int capturedSq = history.back().capturedSquare;
-        board[capturedSq] = move.captured;
-        addToPieceList(capturedSq, move.captured);
+        board[capturedSq] = move.captured();
+        addToPieceList(capturedSq, move.captured());
     }
 
-    if(move.castling) {
+    if(move.castling()) {
         if(to == 6) { movePieceInList(WROOK, 5, 7); board[7] = WROOK; board[5] = EMPTY; }
         else if(to == 2) { movePieceInList(WROOK, 3, 0); board[0] = WROOK; board[3] = EMPTY; }
         else if(to == 62) { movePieceInList(BROOK, 61, 63); board[63] = BROOK; board[61] = EMPTY; }
@@ -230,40 +231,6 @@ void Board::undoMove(const Move& move) {
     }
 }
 
-
-
-struct Dir {
-    int offset;
-    int fileDelta;
-};
-
-static constexpr Dir BishopDirs[4] = {
-    {  9,  1 },
-    {  7, -1 },
-    { -7,  1 },
-    { -9, -1 }  
-};
-
-static constexpr Dir RookDirs[4] = {
-    {  8,  0 },
-    { -8,  0 },
-    {  1,  1 },
-    { -1, -1 } 
-};
-
-static constexpr int KnightMoves[8][2] = {
-    { 2,  1 }, { 2, -1 },
-    { 1,  2 }, { 1, -2 },
-    {-1,  2 }, {-1, -2 },
-    {-2,  1 }, {-2, -1 }
-};
-
-static constexpr int KingMoves[8][2] = {
-    { 1,  0 }, {-1,  0 },
-    { 0,  1 }, { 0, -1 },
-    { 1,  1 }, { 1, -1 },
-    {-1,  1 }, {-1, -1 }
-};
 
 
 bool Board::isSquareAttacked(int sq, bool byWhite) {
@@ -284,49 +251,32 @@ bool Board::isSquareAttacked(int sq, bool byWhite) {
         }
     }
 
-    for (auto& m : KnightMoves) {
-        int nr = r + m[0];
-        int nf = f + m[1];
-        if (nr < 0 || nr > 7 || nf < 0 || nf > 7) continue;
-        int p = b[nr * 8 + nf];
-        if (isKnight(p) && isWhite(p) == byWhite) return true;
+    const int enemyKnight = byWhite ? WKNIGHT : BKNIGHT;
+    const attacks::SquareList& knights = attacks::Knight[sq];
+    for (int i = 0; i < knights.count; ++i) {
+        if (b[knights.squares[i]] == enemyKnight) return true;
     }
 
-    for (auto& d : BishopDirs) {
-        int nf = f;
+    const int enemyBishop = byWhite ? WBISHOP : BBISHOP;
+    const int enemyRook = byWhite ? WROOK : BROOK;
+    const int enemyQueen = byWhite ? WQUEEN : BQUEEN;
+    for (int d = 0; d < 8; ++d) {
+        const int slider = d < attacks::FirstOrthogonal ? enemyBishop : enemyRook;
+        const int offset = attacks::SlideDirs[d].offset;
         int sqi = sq;
-        while (true) {
-            nf += d.fileDelta;
-            sqi += d.offset;
-            if (nf < 0 || nf > 7 || sqi < 0 || sqi > 63) break;
-            int p = b[sqi];
+        for (int n = attacks::StepsToEdge[sq][d]; n > 0; --n) {
+            sqi += offset;
+            const int p = b[sqi];
             if (p) {
-                if (isWhite(p) == byWhite && (isBishop(p) || isQueen(p))) return true;
+                if (p == slider || p == enemyQueen) return true;
                 break; // blocked
             }
         }
     }
-
-    for (auto& d : RookDirs) {
-        int nf = f;
-        int sqi = sq;
-        while (true) {
-            nf += d.fileDelta;
-            sqi += d.offset;
-            if (nf < 0 || nf > 7 || sqi < 0 || sqi > 63) break;
-            int p = b[sqi];
-            if (p) {
-                if (isWhite(p) == byWhite && (isRook(p) || isQueen(p))) return true;
-                break; // blocked
-            }
-        }
-    }
-    for (auto& m : KingMoves) {
-        int nr = r + m[0];
-        int nf = f + m[1];
-        if (nr < 0 || nr > 7 || nf < 0 || nf > 7) continue;
-        int p = b[nr * 8 + nf];
-        if (isKing(p) && isWhite(p) == byWhite) return true;
+    const int enemyKing = byWhite ? WKING : BKING;
+    const attacks::SquareList& kings = attacks::King[sq];
+    for (int i = 0; i < kings.count; ++i) {
+        if (b[kings.squares[i]] == enemyKing) return true;
     }
 
     return false;
@@ -338,7 +288,7 @@ uint64_t Board::perft(int depth) {
     MoveGen movegen(*this);
     uint64_t total = 0;
     
-    vector<Move> moves = movegen.generateMoves(whiteToPlay);
+    std::vector<Move> moves = movegen.generateMoves(whiteToPlay);
     for(const Move& move : moves) {
         makeMove(move);
         total += perft(depth-1);
@@ -349,7 +299,7 @@ uint64_t Board::perft(int depth) {
 
 uint64_t Board::perftDivide(int depth) {
     MoveGen movegen(*this);
-    vector<Move> moves = movegen.generateMoves(whiteToPlay);
+    std::vector<Move> moves = movegen.generateMoves(whiteToPlay);
 
     uint64_t totalNodes = 0;
 
@@ -367,17 +317,17 @@ uint64_t Board::perftDivide(int depth) {
     return totalNodes;
 }
 
-void Board::loadFEN(const string& fen) {
-    fill(board,board+64,EMPTY);
+void Board::loadFEN(const std::string& fen) {
+    std::fill(board,board+64,EMPTY);
     for(int i = 0; i < 6; i++) {
         whitePieces[i].clear();
         blackPieces[i].clear();
     }
-    fill(squareIndex, squareIndex+64, -1);
+    std::fill(squareIndex, squareIndex+64, -1);
     castlingRights = 0;
     enpassantSquare = -1;
-    istringstream iss(fen);
-    string boardPart, activeColor, castling, enpassant;
+    std::istringstream iss(fen);
+    std::string boardPart, activeColor, castling, enpassant;
     int halfmove, fullmove;
     iss >> boardPart >> activeColor >> castling >> enpassant >> halfmove >> fullmove;
     int sq = 56; 
@@ -477,14 +427,14 @@ bool Board::isRepeated() {
 
 
 void Board::print() {
-    static string pieceChar = ".PNBRQKpnbrqk";
-    cout << "\n a b c d e f g h\n";
+    static std::string pieceChar = ".PNBRQKpnbrqk";
+    std::cout << "\n a b c d e f g h\n";
     for(int r = 7; r >= 0; r--) {
-        cout << r+1 << ' ';
+        std::cout << r+1 << ' ';
         for(int f = 0; f < 8; f++) {
-            cout << pieceChar[board[r*8+f]] << ' ';
+            std::cout << pieceChar[board[r*8+f]] << ' ';
         }
-        cout << r+1 << '\n';
+        std::cout << r+1 << '\n';
     }
-    cout << " a b c d e f g h\n";
+    std::cout << " a b c d e f g h\n";
 }

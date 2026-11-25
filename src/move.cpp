@@ -4,34 +4,11 @@
 #include <string>
 
 
-using namespace std;
-
-
 std::string Move::toString() const {
-        auto squareToString = [](int sq) -> std::string {
-            char file = 'a' + (sq % 8);
-            char rank = '1' + (sq / 8);
-            return std::string() + file + rank;
-        };
+    return toUci();
+}
 
-        std::string str = squareToString(from) + squareToString(to);
-
-        if(promotion != EMPTY) {
-            char promoChar = '?';
-            switch(promotion) {
-                case WKNIGHT: case BKNIGHT: promoChar = 'n'; break;
-                case WBISHOP: case BBISHOP: promoChar = 'b'; break;
-                case WROOK:   case BROOK:   promoChar = 'r'; break;
-                case WQUEEN:  case BQUEEN:  promoChar = 'q'; break;
-                default: promoChar = '?'; 
-            }
-            str += promoChar;
-        }
-
-        return str;
-    }
-
-   Move Move::fromUci(const std::string& uci, Board& board) {
+Move Move::fromUci(const std::string& uci, Board& board) {
 
     auto validSquare = [](char file, char rank) {
         return file >= 'a' && file <= 'h' && rank >= '1' && rank <= '8';
@@ -71,7 +48,7 @@ std::string Move::toString() const {
     }
 
     if (movingPiece == WKING || movingPiece == BKING) {
-        if(abs(to % 8 - from % 8) == 2) castling = true;
+        if(std::abs(to % 8 - from % 8) == 2) castling = true;
     }
     int captured = board.board[to];
     if (movingPiece == WPAWN || movingPiece == BPAWN) {
@@ -83,32 +60,21 @@ std::string Move::toString() const {
 }
 
 
-    std::string Move::toUci() const {
-    if(from < 0 || to < 0) return "0000";
-    int fromFile = from % 8;
-    int fromRank = from / 8;
-    int toFile   = to % 8;
-    int toRank   = to / 8;
+std::string Move::toUci() const {
+    if(isNull()) return "0000";
     std::string uci;
-    uci += ('a' + fromFile);
-    uci += ('1' + fromRank);
-    uci += ('a' + toFile);
-    uci += ('1' + toRank);
+    uci += static_cast<char>('a' + from() % 8);
+    uci += static_cast<char>('1' + from() / 8);
+    uci += static_cast<char>('a' + to() % 8);
+    uci += static_cast<char>('1' + to() / 8);
 
-    if (promotion != EMPTY) {
-        switch (promotion) {
-            case WQUEEN: case BQUEEN:   uci += 'q'; break;
-            case WROOK:  case BROOK:    uci += 'r'; break;
-            case WBISHOP:case BBISHOP:  uci += 'b'; break;
-            case WKNIGHT:case BKNIGHT:  uci += 'n'; break;
-            default: break;
-        }
+    switch (promotion()) {
+        case WQUEEN: case BQUEEN:   uci += 'q'; break;
+        case WROOK:  case BROOK:    uci += 'r'; break;
+        case WBISHOP:case BBISHOP:  uci += 'b'; break;
+        case WKNIGHT:case BKNIGHT:  uci += 'n'; break;
+        default: break;
     }
 
     return uci;
 }
-
-bool Move::operator==(const Move &other) const {
-    return from == other.from && to == other.to && promotion == other.promotion && castling == other.castling;
-}
-

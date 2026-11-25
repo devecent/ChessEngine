@@ -1,10 +1,9 @@
 #include "openingbook.h"
 #include <fstream>
 
-using namespace std;
 
 
-static uint64_t readU64(ifstream& in) {
+static uint64_t readU64(std::ifstream& in) {
     uint64_t x = 0;
     for (int i = 0; i < 8; i++) {
         int c = in.get();
@@ -13,19 +12,19 @@ static uint64_t readU64(ifstream& in) {
     return x;
 }
 
-static uint16_t readU16(ifstream& in) {
+static uint16_t readU16(std::ifstream& in) {
     int hi = in.get();
     int lo = in.get();
     return static_cast<uint16_t>((static_cast<uint8_t>(hi) << 8) | static_cast<uint8_t>(lo));
 }
 
 
-OpeningBook::OpeningBook(const string& file) {
+OpeningBook::OpeningBook(const std::string& file) {
     load(file);
 }
 
-void OpeningBook::load(const string& file) {
-    ifstream in(file, ios::binary);
+void OpeningBook::load(const std::string& file) {
+    std::ifstream in(file, std::ios::binary);
     if(!in) return;
     while(true) {
         uint64_t key = readU64(in);
@@ -44,8 +43,8 @@ uint16_t OpeningBook::getMove(uint64_t key) {
     if(it == openingBook.end() || it->second.empty()) {
         return 0;
     }
-    const vector<uint16_t>& moves = it->second;
-    uniform_int_distribution<size_t> dist(0, moves.size() - 1);
+    const std::vector<uint16_t>& moves = it->second;
+    std::uniform_int_distribution<size_t> dist(0, moves.size() - 1);
     return moves[dist(rng)];
 }
 

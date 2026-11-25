@@ -7,7 +7,6 @@
 #include <cmath>
 #include <cstdlib>
 
-using namespace std;
 
 namespace {
 struct SearchTimeout {};
@@ -47,7 +46,7 @@ private:
     Board& board;
     int enpassant;
     uint64_t key;
-    vector<uint64_t> savedRepetition;
+    std::vector<uint64_t> savedRepetition;
 };
 }
 
@@ -56,25 +55,25 @@ int Search::thinkTime(int whiteTime, int blackTime, int whiteInc, int blackInc) 
     int myIncrement = board.whiteToPlay ? whiteInc : blackInc;
     double think = static_cast<double>(myTime) / 40.0;
     if(myTime > myIncrement * 2) think += myIncrement * 0.8;
-    double minThink = min(50.0, myTime * 0.25);
-    return static_cast<int>(ceil(max(minThink, think)));
+    double minThink = std::min(50.0, myTime * 0.25);
+    return static_cast<int>(std::ceil(std::max(minThink, think)));
 }
 
 Move Search::findBestMove(int timeLimitMs) {
     killers = {};
     history = {};
-    deadline = chrono::steady_clock::now() + chrono::milliseconds(max(0, timeLimitMs));
-    vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
+    deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(std::max(0, timeLimitMs));
+    std::vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
     if(moves.empty()) {
-        deadline = chrono::steady_clock::time_point::max();
+        deadline = std::chrono::steady_clock::time_point::max();
         return Move();
     }
     Move bestMove = moves.front();
     try {
         for(int depth = 1; depth <= maxDepth; ++depth) {
             moveOrder(moves, bestMove, 0);
-            auto previousBest = find(moves.begin(), moves.end(), bestMove);
-            if(previousBest != moves.end()) iter_swap(moves.begin(), previousBest);
+            auto previousBest = std::find(moves.begin(), moves.end(), bestMove);
+            if(previousBest != moves.end()) std::iter_swap(moves.begin(), previousBest);
             int bestEval = -MATE_SCORE;
             Move currentBestMove = moves.front();
             for(const Move& move : moves) {
@@ -92,12 +91,12 @@ Move Search::findBestMove(int timeLimitMs) {
         }
     } catch(const SearchTimeout&) {
     }
-    deadline = chrono::steady_clock::time_point::max();
+    deadline = std::chrono::steady_clock::time_point::max();
     return bestMove;
 }
 
 bool Search::canNullMove(int depth, int beta, int ply) {
-    if(depth < 3 || ply == 0 || abs(beta) >= MATE_SCORE - 1000
+    if(depth < 3 || ply == 0 || std::abs(beta) >= MATE_SCORE - 1000
        || board.fiftyMoveCounter >= 90) return false;
     const auto& pieces = board.whiteToPlay ? board.whitePieces : board.blackPieces;
     if(pieces[3].empty() && pieces[4].empty() && pieces[1].size() + pieces[2].size() < 2)
@@ -113,8 +112,8 @@ int Search::searchNullMove(int depth, int alpha, int beta, int ply) {
 
 int Search::negamax(int depth, int alpha, int beta, int ply, bool allowNull) {
     if(depth <= 0) return quiescence(alpha, beta, ply);
-    if(chrono::steady_clock::now() >= deadline) throw SearchTimeout{};
-    vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
+    if(std::chrono::steady_clock::now() >= deadline) throw SearchTimeout{};
+    std::vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
     if(moves.empty()) {
         int kingsq = board.whiteToPlay ? board.whitePieces[5][0] : board.blackPieces[5][0];
         return board.isSquareAttacked(kingsq, !board.whiteToPlay) ? -MATE_SCORE + ply : 0;
@@ -143,9 +142,9 @@ int Search::negamax(int depth, int alpha, int beta, int ply, bool allowNull) {
             bestMove = move;
             maxEval = eval;
         }
-        alpha = max(alpha, eval);
+        alpha = std::max(alpha, eval);
         if(alpha >= beta) {
-            if(move.captured == EMPTY && move.promotion == EMPTY)
+            if(move.isQuiet())
                 recordQuietCutoff(move, depth, ply);
             break;
         }
@@ -155,8 +154,8 @@ int Search::negamax(int depth, int alpha, int beta, int ply, bool allowNull) {
 }
 
 int Search::quiescence(int alpha, int beta, int ply) {
-    if(chrono::steady_clock::now() >= deadline) throw SearchTimeout{};
-    vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
+    if(std::chrono::steady_clock::now() >= deadline) throw SearchTimeout{};
+    std::vector<Move> moves = MoveGen(board).generateMoves(board.whiteToPlay);
     const int kingSquare = board.whiteToPlay ? board.whitePieces[5][0] : board.blackPieces[5][0];
     const bool inCheck = board.isSquareAttacked(kingSquare, !board.whiteToPlay);
     if(moves.empty()) return inCheck ? -MATE_SCORE + ply : 0;
@@ -166,9 +165,9 @@ int Search::quiescence(int alpha, int beta, int ply) {
     if(!inCheck) {
         best = Evaluation(board).evaluate();
         if(best >= beta) return best;
-        alpha = max(alpha, best);
-        moves.erase(remove_if(moves.begin(), moves.end(), [](const Move& move) {
-            return move.captured == EMPTY && move.promotion == EMPTY;
+        alpha = std::max(alpha, best);
+        moves.erase(std::remove_if(moves.begin(), moves.end(), [](const Move& move) {
+            return move.isQuiet();
         }), moves.end());
     }
 
@@ -180,8 +179,8 @@ int Search::quiescence(int alpha, int beta, int ply) {
             ScopedMove madeMove(board, move);
             score = -quiescence(-beta, -alpha, ply + 1);
         }
-        best = max(best, score);
-        alpha = max(alpha, score);
+        best = std::max(best, score);
+        alpha = std::max(alpha, score);
         if(alpha >= beta) break;
     }
     return best;
@@ -192,37 +191,45 @@ void Search::recordQuietCutoff(const Move& move, int depth, int ply) {
         killers[ply][1] = killers[ply][0];
         killers[ply][0] = move;
     }
-    int& value = history[board.whiteToPlay ? 1 : 0][move.from][move.to];
-    const int boundedDepth = clamp(depth, 1, 32);
+    int& value = history[board.whiteToPlay ? 1 : 0][move.from()][move.to()];
+    const int boundedDepth = std::clamp(depth, 1, 32);
     const int bonus = boundedDepth * boundedDepth;
     value += bonus - value * bonus / historyLimit;
-    value = min(value, historyLimit);
+    value = std::min(value, historyLimit);
 }
 
-void Search::moveOrder(vector<Move>& moves, const Move& ttMove, int ply) {
+void Search::moveOrder(std::vector<Move>& moves, const Move& ttMove, int ply) {
     constexpr int ttScore = 100000000;
     constexpr int promotion = 6000000;
     constexpr int pieceValue[6] = {100, 300, 320, 500, 900, 0};
-    vector<pair<int, Move>> scored;
-    scored.reserve(moves.size());
+    // Score into a stack buffer (a position has at most 218 legal moves) rather
+    // than allocating a vector at every node; the heap is only a fallback.
+    std::pair<int, Move> buffer[256];
+    std::vector<std::pair<int, Move>> overflow;
+    std::pair<int, Move>* scored = buffer;
+    if(moves.size() > std::size(buffer)) {
+        overflow.resize(moves.size());
+        scored = overflow.data();
+    }
+    size_t count = 0;
     for(const Move& move : moves) {
         int total = 0;
         if(move == ttMove) {
             total = ttScore;
         } else {
-            if(move.captured != EMPTY) {
-                total += 2000000 + pieceValue[pieceType(move.captured)] * 10
-                       - pieceValue[pieceType(board.board[move.from])];
+            if(move.captured() != EMPTY) {
+                total += 2000000 + pieceValue[pieceType(move.captured())] * 10
+                       - pieceValue[pieceType(board.board[move.from()])];
             }
-            if(move.promotion != EMPTY) total += promotion;
-            if(move.captured == EMPTY && move.promotion == EMPTY) {
+            if(move.promotion() != EMPTY) total += promotion;
+            if(move.isQuiet()) {
                 if(ply >= 0 && ply < killerPlies && move == killers[ply][0]) total = 1000000;
                 else if(ply >= 0 && ply < killerPlies && move == killers[ply][1]) total = 999999;
-                else total = history[board.whiteToPlay ? 1 : 0][move.from][move.to];
+                else total = history[board.whiteToPlay ? 1 : 0][move.from()][move.to()];
             }
         }
-        scored.emplace_back(total, move);
+        scored[count++] = {total, move};
     }
-    sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
-    for(size_t i = 0; i < moves.size(); ++i) moves[i] = scored[i].second;
+    std::sort(scored, scored + count, [](const auto& a, const auto& b) { return a.first > b.first; });
+    for(size_t i = 0; i < count; ++i) moves[i] = scored[i].second;
 }

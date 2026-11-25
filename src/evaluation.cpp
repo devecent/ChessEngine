@@ -4,10 +4,9 @@
 #include <algorithm>
 #include <cstdlib>
 
-using namespace std;
 
-const vector<vector<int>> Evaluation::kingPawnShieldsWhite = Evaluation::precomputeKingPawnShields(true);
-const vector<vector<int>> Evaluation::kingPawnShieldsBlack = Evaluation::precomputeKingPawnShields(false);
+const std::vector<std::vector<int>> Evaluation::kingPawnShieldsWhite = Evaluation::precomputeKingPawnShields(true);
+const std::vector<std::vector<int>> Evaluation::kingPawnShieldsBlack = Evaluation::precomputeKingPawnShields(false);
 
 const int PawnValue = 100;
 const int KnightValue = 300;
@@ -80,14 +79,14 @@ inline int distance(int sq1, int sq2) {
     int file1 = sq1 % 8;
     int rank2 = sq2 / 8;
     int file2 = sq2 % 8;
-    return abs(rank2 - rank1) + abs(file2 - file1);
+    return std::abs(rank2 - rank1) + std::abs(file2 - file1);
 }
 
 inline int distanceFromCenter(int sq) {
     int centers[4] = {27, 28, 35, 36};
     int mn = 20;
     for(int i = 0; i < 4; i++) {
-        mn = min(mn,distance(centers[i],sq));
+        mn = std::min(mn,distance(centers[i],sq));
     }
     return mn;
 }
@@ -112,7 +111,7 @@ int Evaluation::kingSafety(bool white, int pieceSquareEval) {
     int friendlyPawn = white ? WPAWN : BPAWN;
     int penalty = 0;
     if(kingFile <= 2 || kingFile >= 5) {
-        const vector<int>& squares = white ? kingPawnShieldsWhite[kingsq] : kingPawnShieldsBlack[kingsq];
+        const std::vector<int>& squares = white ? kingPawnShieldsWhite[kingsq] : kingPawnShieldsBlack[kingsq];
         for(size_t i = 0; i < squares.size()/2; i++) {
             if(board.board[squares[i]] != friendlyPawn) {
                 if(i+3 < squares.size() && board.board[squares[i+3]] == friendlyPawn) {
@@ -127,7 +126,7 @@ int Evaluation::kingSafety(bool white, int pieceSquareEval) {
     }
     else {
         float enemyDevelopment = (float)(pieceSquareEval+10)/130.0;
-        enemyDevelopment = clamp(enemyDevelopment,0.0f,1.0f);
+        enemyDevelopment = std::clamp(enemyDevelopment,0.0f,1.0f);
         penalty += (int)(58*enemyDevelopment);
     }
     float weight = 1-endgameT;

@@ -1,11 +1,9 @@
 #include "movegen.h"
 #include "boardHelpers.h"
-#include <cstdlib>
-#include <iostream>
+#include "attacks.h"
 
-using namespace std;
 
-void MoveGen::generatePawnMoves(int sq, vector<Move>& moves, bool white) {
+void MoveGen::generatePawnMoves(int sq, std::vector<Move>& moves, bool white) {
     int rank = sq/8;
     int file = sq%8;
     int forward = white ? 8 : -8;
@@ -84,94 +82,53 @@ void MoveGen::generatePawnMoves(int sq, vector<Move>& moves, bool white) {
     }
 }
 
-void MoveGen::generateBishopMoves(int sq, vector<Move>& moves, bool white) {
-    auto& b = board.board;
-    int file = sq%8;
-    int directions[4] = {9,7,-7,-9};
-    int fileDirections[4] = {1,-1,1,-1};
-    for(int i = 0; i < 4; i++) {
+// Slides from sq along SlideDirs[first .. first+3], stopping at the first
+// occupied square (captured if it's an enemy piece).
+static void generateSlides(const int (&b)[64], int sq, int first, std::vector<Move>& moves, bool white) {
+    for(int d = first; d < first + 4; d++) {
+        const int offset = attacks::SlideDirs[d].offset;
         int curr = sq;
-        int f = file;
-        while(true) {
-            curr += directions[i];
-            f += fileDirections[i];
-            if(curr >= 64 || curr < 0 || f > 7 || f < 0) {
-                break;
-            }
+        for(int n = attacks::StepsToEdge[sq][d]; n > 0; --n) {
+            curr += offset;
             if(b[curr]) {
                 if(isWhite(b[curr]) != white) {
                     moves.push_back(Move{sq, curr, b[curr], EMPTY, false});
                 }
                 break;
             }
-            else {
-                moves.push_back(Move{sq, curr, EMPTY, EMPTY, false});
-            }
+            moves.push_back(Move{sq, curr, EMPTY, EMPTY, false});
         }
     }
 }
 
-void MoveGen::generateRookMoves(int sq, vector<Move>& moves, bool white) {
-    auto& b = board.board;
-    int rank = sq/8;
-    int file = sq%8;
-    int directions[4] = {8,-8,1,-1};
-    int rankDirections[4] = {1,-1,0,0};
-    int fileDirections[4] = {0,0,1,-1};
-    for(int i = 0; i < 4; i++) {
-        int curr = sq;
-        int f = file;
-        int r = rank;
-        while(true) {
-            curr += directions[i];
-            f += fileDirections[i];
-            r += rankDirections[i];
-            if(curr >= 64 || curr < 0 || f > 7 || f < 0 || r > 7 || r < 0) {
-                break;
-            }
-            if(b[curr]) {
-                if(isWhite(b[curr]) != white) {
-                    moves.push_back(Move{sq, curr, b[curr], EMPTY, false});
-                }
-                break;
-            }
-            else {
-                moves.push_back(Move{sq, curr, EMPTY, EMPTY, false});
-            }
-        }
-    }
+void MoveGen::generateBishopMoves(int sq, std::vector<Move>& moves, bool white) {
+    generateSlides(board.board, sq, attacks::FirstDiagonal, moves, white);
 }
 
-void MoveGen::generateKingMoves(int sq, vector<Move>& moves, bool white) {
+void MoveGen::generateRookMoves(int sq, std::vector<Move>& moves, bool white) {
+    generateSlides(board.board, sq, attacks::FirstOrthogonal, moves, white);
+}
+
+void MoveGen::generateKingMoves(int sq, std::vector<Move>& moves, bool white) {
     auto& b = board.board;
-    int file = sq%8;
-    int directions[8] = {8,-8,1,-1,9,7,-7,-9};
-    for(int i = 0; i < 8; i++) {
-        int to = sq + directions[i];
-        if(to < 0 || to >= 64) continue;
-        int toFile = to % 8;
-        if(abs(toFile-file) > 1) continue;
+    const attacks::SquareList& targets = attacks::King[sq];
+    for(int i = 0; i < targets.count; i++) {
+        const int to = targets.squares[i];
         if(b[to] && isWhite(b[to]) == white) continue;
         moves.push_back(Move{sq, to, b[to], EMPTY, false});
     }
 }
 
-void MoveGen::generateQueenMoves(int sq, vector<Move>& moves, bool white) {
+void MoveGen::generateQueenMoves(int sq, std::vector<Move>& moves, bool white) {
     generateRookMoves(sq,moves,white);
     generateBishopMoves(sq,moves,white);
 }
 
-void MoveGen::generateKnightMoves(int sq, vector<Move>& moves, bool white) {
+void MoveGen::generateKnightMoves(int sq, std::vector<Move>& moves, bool white) {
     auto& b = board.board;
-    int rank = sq / 8;
-    int file = sq % 8;
-    int dr[8] = {2, 2, -2, -2, 1, 1, -1, -1};
-    int df[8] = {1, -1, 1, -1, 2, -2, 2, -2};
-    for(int i = 0; i < 8; i++) {
-        int r = rank+dr[i];
-        int f = file+df[i];
-        if(r < 0 || r > 7 || f < 0 || f > 7) continue;
-        int dest = r * 8 + f;
+    const attacks::SquareList& targets = attacks::Knight[sq];
+    for(int i = 0; i < targets.count; i++) {
+        const int dest = targets.squares[i];
         if(!b[dest]) {
             moves.push_back(Move{sq, dest, EMPTY, EMPTY, false});
         }
@@ -182,7 +139,7 @@ void MoveGen::generateKnightMoves(int sq, vector<Move>& moves, bool white) {
 }
 
 
-void MoveGen::generateCastlingMoves(vector<Move>& moves, bool white) {
+void MoveGen::generateCastlingMoves(std::vector<Move>& moves, bool white) {
     auto& b = board.board;
     int castling = board.castlingRights;
     if(white) {
@@ -204,8 +161,8 @@ void MoveGen::generateCastlingMoves(vector<Move>& moves, bool white) {
 }
 
 
-vector<Move> MoveGen::generatePseudoLegalMoves(bool whiteToMove) {
-    vector<Move> moves;
+std::vector<Move> MoveGen::generatePseudoLegalMoves(bool whiteToMove) {
+    std::vector<Move> moves;
     moves.reserve(256);
     auto& pieces = whiteToMove ? board.whitePieces : board.blackPieces;
     for(int sq : pieces[0]) {
@@ -230,19 +187,34 @@ vector<Move> MoveGen::generatePseudoLegalMoves(bool whiteToMove) {
     return moves;
 }
 
-vector<Move> MoveGen::generateMoves(bool whiteToMove) {
-    vector<Move> potentialMoves = generatePseudoLegalMoves(whiteToMove);
-    vector<Move> moves;
-    moves.reserve(256);
-    
-    for(const Move& move : potentialMoves) {
+std::vector<Move> MoveGen::generateMoves(bool whiteToMove) {
+    // Filter in place (stable, keeps generation order) instead of copying the
+    // legal moves into a second vector: one allocation per call instead of two.
+    std::vector<Move> moves = generatePseudoLegalMoves(whiteToMove);
+    const int ownKing = whiteToMove ? board.whitePieces[5][0] : board.blackPieces[5][0];
+    const bool inCheck = board.isSquareAttacked(ownKing, !whiteToMove);
+    const int kingRank = ownKing / 8, kingFile = ownKing % 8;
+    size_t legal = 0;
+    for(const Move move : moves) {
+        // Shortcut: when not in check, a non-king, non-en-passant move can only
+        // expose the king if the moving piece is pinned, and a pinned piece must
+        // share a rank, file or diagonal with its king. Anything else is legal
+        // without the make/undo below.
+        if(!inCheck && move.from() != ownKing && !board.isEnPassant(move)) {
+            const int dr = move.from() / 8 - kingRank, df = move.from() % 8 - kingFile;
+            if(dr != 0 && df != 0 && dr != df && dr != -df) {
+                moves[legal++] = move;
+                continue;
+            }
+        }
         board.makeMove(move);
         int kingSquare = whiteToMove ? board.whitePieces[5][0] : board.blackPieces[5][0];
         if(!board.isSquareAttacked(kingSquare,!whiteToMove)) {
-            moves.push_back(move);
+            moves[legal++] = move;
         }
         board.undoMove(move);
     }
+    moves.resize(legal);
     return moves;
 }
 

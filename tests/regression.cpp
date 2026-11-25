@@ -183,17 +183,17 @@ int main() {
         check(quietOrder[0] == quietC, "TT move did not outrank killers");
         search.moveOrder(quietOrder, Move(), 5);
         check(quietOrder[0] == quietA && quietOrder[1] == quietB, "history ordering failed");
-        check(search.history[0][quietA.from][quietA.to] == 0, "history leaked across colors");
+        check(search.history[0][quietA.from()][quietA.to()] == 0, "history leaked across colors");
         for(int i = 0; i < 10000; ++i) search.recordQuietCutoff(quietA, 40, 200);
-        check(search.history[1][quietA.from][quietA.to] <= Search::historyLimit,
+        check(search.history[1][quietA.from()][quietA.to()] <= Search::historyLimit,
               "history scores exceeded bound");
         search.killers = {};
         search.history = {};
         const Board beforeCutoff = b;
         search.negamax(1, -MATE_SCORE, -MATE_SCORE + 100, 3);
-        check(search.killers[3][0].from >= 0, "quiet beta cutoff did not train killer");
+        check(!search.killers[3][0].isNull(), "quiet beta cutoff did not train killer");
         const Move trained = search.killers[3][0];
-        check(search.history[1][trained.from][trained.to] > 0,
+        check(search.history[1][trained.from()][trained.to()] > 0,
               "quiet beta cutoff did not train history");
         check(samePosition(beforeCutoff, b), "heuristic training changed position");
 
@@ -283,7 +283,7 @@ int main() {
         check(b.board[28] == WPAWN && b.board[52] == BPAWN && !b.whiteToPlay, "illegal UCI move not rejected");
         uci.handlePosition("position startpos moves zz");
         check(samePosition(b, Board()), "malformed UCI move changed board");
-        check(Move::fromUci("e9", b).from == -1 && Move::fromUci("i2i4", b).from == -1, "malformed fromUci accepted");
+        check(Move::fromUci("e9", b).isNull() && Move::fromUci("i2i4", b).isNull(), "malformed fromUci accepted");
         check(book.getMove(b.zobristKey) == 0 && book.openingBook.empty(), "book lookup inserted entry");
 
         b.loadFEN("7k/8/8/8/8/8/8/KQ6 w - - 0 1");

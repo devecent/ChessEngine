@@ -10,7 +10,6 @@ add_library(chessengine_core STATIC
     src/search.cpp
     src/transpositiontable.cpp
     src/uci.cpp
-    src/zobrist.cpp
 )
 target_include_directories(chessengine_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_compile_features(chessengine_core PUBLIC cxx_std_20)

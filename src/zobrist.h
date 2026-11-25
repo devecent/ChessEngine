@@ -185,10 +185,11 @@ class Zobrist {
 
     public:
     
-    static uint64_t castling(int castlingRights);
-    static uint64_t piece(int piece, int sq);
-    static uint64_t enpassant(int sq);
-    static uint64_t side();
+    // Defined here so they can be inlined into makeMove and friends.
+    static constexpr uint64_t castling(int castlingRights) { return castlingKeys[castlingRights]; }
+    static constexpr uint64_t piece(int piece, int sq) { return RANDOM_ARRAY[64 * MAP_HASH_PIECE[piece - 1] + sq]; }
+    static constexpr uint64_t enpassant(int sq) { return RANDOM_ARRAY[772 + sq % 8]; }
+    static constexpr uint64_t side() { return RANDOM_ARRAY[780]; }
 };
 
 
